@@ -2,6 +2,7 @@ from numpy import *
 from SubTube import *
 from Pod import *
 
+import matplotlib.pyplot as plt
 
 class Tube:
 
@@ -98,13 +99,51 @@ class Tube:
 		points,velTangent=self.pod.getData()
 		collisions=self.checkPointsForCollisions(points)
 		i=0
-		while collisions==[] and not self.checkForCompletion(points) and i<4000:
-			print i*TIMESTEP
-			print points[0][0]
+
+		xPosList = []
+		xVelList = []
+		xAccelList = []
+		timeList = []
+
+		while collisions==[] and not self.checkForCompletion(points):
+	
+			if i % 1000 == 0:
+				print i*TIMESTEP, points[0][0]
+
+			# if points[0][0] > 500:
+			# 	self.pod.startBraking()
+
+			timeList.append(i*TIMESTEP)
+			
+			xPosList.append(self.pod.position[0])
+			xVelList.append(self.pod.velocity[0])	
+			xAccelList.append(self.pod.accel[0])
+
 			collisions,points=self.updateStep()
 			i+=1
 
-		print 
+		figure = plt.figure()
+		figure.suptitle("Graph for drag coefficient = " + str(DRAG_COEFFICIENT))
+
+		plt.subplot(3,1,1)
+		plt.plot(timeList, xPosList)
+		plt.ylim([0,self.length])
+		plt.ylabel('Position of Pod(m)')
+		plt.xlabel('Time (s)')
+		
+
+		plt.subplot(3,1,2)
+		plt.plot(timeList, xVelList)
+		plt.ylabel('Velocity of Pod(m)')
+		plt.xlabel('Time (s)')
+		
+		plt.subplot(3,1,3)
+		plt.plot(timeList, xAccelList)
+		plt.ylabel('Acceleration of Pod(m)')
+		plt.xlabel('Time (s)')
+
+		plt.show()
+
 		if collisions!=[]:
 			print "uh oh"
 			print collisions
@@ -127,7 +166,7 @@ def inToM(inches):
 	return inches/39.370
 
 def main():
-	sub1=SubTube(20,0,False)
+	sub1=SubTube(1600,0,False)
 	subs=[sub1]
 	pod=Pod()
 	tube=Tube(subs,pod)

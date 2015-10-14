@@ -10,9 +10,13 @@ import random
 
 TIMESTEP = .001
 
-DRAG_COEFFICIENT = 1 
-PUSHER_FORCE = 10000 # Newtons
-PUSHER_DISTANCE = 500 # seconds
+AIR_PRESSURE = .1 # psi
+
+DRAG_COEFFICIENT = 0.2
+AIR_DENSITY = 6900*AIR_PRESSURE/(287*298)
+
+PUSHER_FORCE = 23520 # Newtons
+PUSHER_DISTANCE = 243 #meters
 
 COM_Z_DROP = -.2
 
@@ -20,6 +24,8 @@ class Pod:
 	def __init__(self):
 
 		self.time = 0
+
+		self.braking = False
 
 
 		# rough numbers on pod dimensions due to spaceX rules
@@ -41,7 +47,7 @@ class Pod:
 
 		# mass and center of mass are needed to caclulate effects of forces
 		self.centerOfMass = [0,0,0]
-		self.mass = 3100.0 # Kilograms
+		self.mass = 3000.0 # Kilograms
 
 		# moment of inertia of the pod (about x, y, and z)
 		self.momentOfInertia = [0,0,0]
@@ -74,7 +80,7 @@ class Pod:
 	"""
 	def update(self, aCentrip):
 
-		self.accel = [0.0,0.0,0.0]
+		self.accel = [0.0,0.00,0.0]
 
 		# Update the forces out of our control
 
@@ -83,13 +89,14 @@ class Pod:
 			self.accel[0] += PUSHER_FORCE / self.mass
 
 		# drag force
-		self.accel[0] -= DRAG_COEFFICIENT * self.baseWidth * self.height * self.velocity[0]**2 / (2*self.mass)
+		self.accel[0] -= DRAG_COEFFICIENT * AIR_DENSITY * self.baseWidth * self.height * self.velocity[0]**2 / (2.0*self.mass)
 
 		# gravity 
 		self.accel[2] -= 9.8
 
 
-
+		if self.braking:
+			self.accel[0] -= 5 * AIR_DENSITY * self.baseWidth * self.height * self.velocity[0]**2 / (2.0*self.mass)
 
 		# apply upwards air thrusters with randomness and simple PID
 		self.accel[2] += 9.8 + .0005*(random.random()-.5)
@@ -150,6 +157,12 @@ class Pod:
 
 		return transformedPoints, self.velocity[0]
 
+
+	def startBraking(self):
+		self.braking = True 
+
+	def stopBraking(self):
+		self.braking = False
 
 
 
