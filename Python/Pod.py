@@ -4,6 +4,7 @@
 
 import numpy
 import math
+import random
 
 # Relevant Constants
 
@@ -70,7 +71,7 @@ class Pod:
 	"""
 		update function, this updates the pod's states over one timestep
 	"""
-	def update(self):
+	def update(self, aCentrip):
 
 		self.accel = [0.0,0.0,0.0]
 
@@ -89,8 +90,10 @@ class Pod:
 
 
 
-		# apply upwards air thrusters
-		self.accel[2] += 9.8
+		# apply upwards air thrusters with randomness and simple PID
+		self.accel[2] += 9.8 + .0005*(random.random()-.5)
+
+		# self.accel[2] += (- .02 * (self.position[2]-COM_Z_DROP) + .0005*self.velocity[2])
 
 
 		# update velocity based on acceleration
@@ -106,7 +109,12 @@ class Pod:
 		self.time += TIMESTEP
 
 
-	def getCollisionPoints(self):
+
+	"""
+		method to return data for use in the tube class
+		returns a tuple of (transformed collision points, x velocity)
+	"""
+	def getData(self):
 		transformedPoints = []
 
 		# rotation matrices about x, y and z
@@ -135,11 +143,11 @@ class Pod:
 
 			# point = numpy.inner(totRotMatrix, point)
 
-			# point = [point[i] + self.position[i] for i in range(3)]
+			point = [point[i] + self.position[i] for i in range(3)]
 
 			transformedPoints.append(point)
 
-		return transformedPoints
+		return transformedPoints, self.velocity[0]
 
 
 
@@ -148,17 +156,18 @@ def main():
 
 	p = Pod()
 
-	print p.getCollisionPoints()
+	print p.getData()
 	
-	# for i in range(60*1000):
-	# 	p.update()
-	# 	if i%1000 == 0:
-	# 		print "Position", 
-	# 		print p.position[0],
-	# 		print ", Velocity",
-	# 		print p.velocity[0],			
-	# 		print ", Acceleration",
-	# 		print  p.accel[0]
+	for i in range(60*1000):
+		p.update(0)
+		if i%1000 == 0:
+			print "Position", 
+			print p.position[2],
+			print ", Velocity",
+			print p.velocity[2],			
+			print ", Acceleration",
+			print  p.accel[2]
+
 
 if __name__ == "__main__":
 	main()
