@@ -21,6 +21,7 @@ class Pod:
 
 		self.time = 0
 
+
 		# rough numbers on pod dimensions due to spaceX rules
 		self.baseWidth = 1.1
 		self.midwidth = 1.3

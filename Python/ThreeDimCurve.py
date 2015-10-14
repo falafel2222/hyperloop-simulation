@@ -1,4 +1,6 @@
-from sympy import *
+#deprecated
+
+'''from sympy import *
 import numpy as np
 
 class ThreeDimCurve:
@@ -46,4 +48,4 @@ print c.getEqnOrthogonalPlaneAtParam(2)
 
 
 
-#print y.evalf(subs={x:2})'''
+#print y.evalf(subs={x:2})''''''

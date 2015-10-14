@@ -12,3 +12,4 @@ class SubTube:
 		else:
 			accelMag=(velocity**2)/self.radius
 			accel=accelMag if self.righthanded else -1*accelMag
+			return accelMag
