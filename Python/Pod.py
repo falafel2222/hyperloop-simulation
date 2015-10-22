@@ -80,7 +80,7 @@ class Pod:
 	"""
 	def update(self, aCentrip):
 
-		self.accel = [0.0,0.00,0.0]
+		self.accel = [0.0,0.001,0.0]
 
 		# Update the forces out of our control
 
