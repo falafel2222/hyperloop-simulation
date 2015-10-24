@@ -5,7 +5,7 @@ function [] = HyperLoopSim()
 
 % global variables
 timestep = .01;
-maxTime = 30;
+maxTime = 50;
 numSteps = maxTime / timestep;
 
 % pod state variables
@@ -20,7 +20,7 @@ rotAcc = zeros(3, numSteps);
 collisionPointsTrackFrame = zeros(numSteps, 8,3);
 
 q=zeros(4, numSteps);
-q(:,1)=[0.999994; 0.00199999; 0.00199999; 0.00199999];
+q(:,1)=[0.00199999; 0.00199999; 0.00199999; 0.999994];
 
 % pod constants
 podHeight = 1.0;
@@ -56,10 +56,10 @@ I = [1.0/12*mass*(podHeight^2 + podWidth^2) 0 0; ...
 for n = 2:numSteps    
     
     % we need the rotational matrix to convert between local and global
-    q0=q(1,n-1);
-    q1=q(2,n-1);
-    q2=q(3,n-1);
-    q3=q(4,n-1);
+    q0=q(4,n-1);
+    q1=q(1,n-1);
+    q2=q(2,n-1);
+    q3=q(3,n-1);
     rotMatrix=[1-2*q2^2-2*q3^2 2*(q1*q2-q0*q3) 2*(q1*q3+q0*q2);...
                2*(q1*q2+q0*q3) 1-2*q1^2-2*q3^2 2*(q2*q3-q0*q1);...
                2*(q1*q3-q0*q2) 2*(q2*q3+q0*q1) 1-2*q1^2-2*q2^2];    
@@ -94,15 +94,13 @@ for n = 2:numSteps
     % convert all forces to local and calculate angular acceleration
     netTorque = [0 0 0];
     for i = 1:size(airThrusters,1)
+        % air thrusters are already in local
         thrusterTorque = cross(airThrusters(i,1:3),transpose(thrusterForces(:,i)));
         netTorque = netTorque + thrusterTorque;
     end
     
-    localAlpha = I \ transpose(netTorque);
+    rotAcc(:,n) = I \ transpose(netTorque);
 
-    
-    rotAcc(:,n) = localAlpha;
-%    display(rotAcc(:, n));
     rotVel(:,n) = rotVel(:,n-1) + timestep * rotAcc(:,n);
     
     % update quaternions - math I don't really understand too well
@@ -129,6 +127,11 @@ for n = 2:numSteps
         collisionPointsTrackFrame(n,i,:) = rotatedPoint;
     end
     
+    %collisionOccurred=CollisionChecking(squeeze(collisionPointsTrackFrame(n,:,:)));
+    %if collisionOccurred==1
+    %    disp('Collision Occurred!')
+    %    break
+    %end
 end
 
 % done with the simulation - time to graph things!
@@ -140,6 +143,29 @@ timeArray = timeArray * timestep;
 
  
  for i = 2:10:n
+     
+     % needs to be revised to allow for proper bounds checking
+     % when combining pos and rotation.
+%    A = transpose(squeeze(collisionPointsTrackFrame(i,5,:)) + pos(:,i));
+%    B = transpose(squeeze(collisionPointsTrackFrame(i,1,:)) + pos(:,i));
+%    C = transpose(squeeze(collisionPointsTrackFrame(i,6,:)) + pos(:,i));
+%    D = transpose(squeeze(collisionPointsTrackFrame(i,7,:)) + pos(:,i));
+%    E = transpose(squeeze(collisionPointsTrackFrame(i,8,:)) + pos(:,i));
+%    F = transpose(squeeze(collisionPointsTrackFrame(i,3,:)) + pos(:,i));
+%    G = transpose(squeeze(collisionPointsTrackFrame(i,2,:)) + pos(:,i));
+%    H = transpose(squeeze(collisionPointsTrackFrame(i,4,:)) + pos(:,i));
+
+%    P = [A;B;F;H;G;C;A;D;E;H;F;D;E;C;G;B]; 
+    
+%    plot3(P(:,1),P(:,2),P(:,3));
+    
+%    zlim([-200 100]);
+%    ylim([-200 200]);
+%    xlim([-200 200]);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    % plots position only based on rotations
     A = collisionPointsTrackFrame(i,5,:);
     B = collisionPointsTrackFrame(i,1,:);
     C = collisionPointsTrackFrame(i,6,:);
@@ -156,6 +182,9 @@ timeArray = timeArray * timestep;
     zlim([-2 2]);
     ylim([-2 2]);
     xlim([-2 2]);
-    
+
+
     pause(.01);
  end     
+
+% plot(pos(3,:));
