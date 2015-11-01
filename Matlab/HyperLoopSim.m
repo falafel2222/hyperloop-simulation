@@ -1,6 +1,8 @@
 % Authors: Adam Shaw, Alex Goldstein, Patrick McKeen
 % Simulation of the hyperloop pod
 
+%DEPRECATED, REPLACED BY HYPERLOOPSIMV2
+
 function [] = HyperLoopSim()
 
 % global variables

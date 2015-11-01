@@ -2,6 +2,8 @@
 %Separate program to check if any points have collided with the walls of
 %the tube
 
+%DEPRECATED, REPLACED FUNCTIONALITY WITH DISTANCE FINDER
+
 function [collisionOccurred] = CollisionChecking(points)
 
 % constants of the tube
