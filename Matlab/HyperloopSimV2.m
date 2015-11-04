@@ -2,11 +2,19 @@
 
 function [] = HyperloopSimV2()
     disp('Simulation Started')
+    
     %set initial variables
+    % Tube conditions
+    DRAG_COEFFICIENT = 0.2;
+    AIR_PRESSURE = .1;
+    AIR_DENSITY = 6900*AIR_PRESSURE/(287*298);
+    PUSHER_FORCE = 17640; % newtons
+    PUSHER_DISTANCE = 243; % meters
+    
     %pod dimensions
     podHeight = 1; %m
     podWidth = 1; %m
-    podLength = 4; %m
+    podLength = 5; %m
     skateLength = podLength; %m
 
     mass = 1500; %kg
@@ -15,8 +23,8 @@ function [] = HyperloopSimV2()
          0 0 1.0/12*mass*(podLength^2 + podWidth^2)];
     CoM = [0,0,0];
 
-    timestep = .0001; %sec
-    maxTime = 5; %sec
+    timestep = .001; %sec
+    maxTime = 15; %sec
     numSteps = maxTime / timestep;
 
     % pod state variables
@@ -31,9 +39,7 @@ function [] = HyperloopSimV2()
 
     q=zeros(4, numSteps);
     q(:,1)=[0;0;.0; 1];
-        
-
-
+       
         
     %collision points
     collisionPoints =   [podLength/2   podWidth/2  -podHeight/2-CoM(3); ...
@@ -61,12 +67,13 @@ function [] = HyperloopSimV2()
     disp('Simulation Initialized')
     %%%BEGIN LOOPING THROUGH TIMESTEPS%%%
     for n = 2:numSteps
-        if mod(n,10) == 0
+        if mod(n,1000) == 0
             disp('--------------------------')
-            disp(n/1000)
+            disp(n*timestep)
             disp(transPos(:,n-1))
 %             disp(q(:,n-1))
         end
+        
         
         
         %calculate center of mass, tensor of inertia
@@ -82,39 +89,51 @@ function [] = HyperloopSimV2()
                    2*(q1*q2+q0*q3) 1-2*q1^2-2*q3^2 2*(q2*q3-q0*q1);...
                    2*(q1*q3-q0*q2) 2*(q2*q3+q0*q1) 1-2*q1^2-2*q2^2];
                 
-        %get forces in local
+        %get all forces in local
         localForces=[];
         localPoints=[];
            %forces already in local
-            skateForces=zeros(3,length(skatePoints));
-          
-            for i=1:length(skatePoints)
+           
+           %%%%% AIR SKATES %%%%%
+           skateForces=zeros(3,length(skatePoints));
+           for i=1:length(skatePoints)
                 point= rotMatrix*skatePoints(:,i) + transPos(:,n-1);
                 [~, vertDist]=DistanceFinder(point);
                 
-                %%% TODO: change the magnitude of vertDistance if the pod
-                %%% is rotated
+                %%% TODO: change the magnitude of vertDistance if the pod is rotated
                 
-                %pass 0 internal pressure for now
-                pointForce=SkateForce(vertDist,0);
-                
-%                 if i == 1 && mod(n,1) == 0
-%                     vertDist
-%                 end
-                
+                pointForce=SkateForce(vertDist,11e3,skateLength);                
                 skateForces(3,i)=pointForce/(2*length(airSkateRight));
             end
             localForces=[localForces skateForces];
             localPoints=[localPoints skatePoints];
+            
+            %%%%% RAIL WHEELS %%%%%
+             % will do later when we get better estimates
              
+             
+            %%%%% SPACEX PUSHER %%%%%
+            if transPos(1,n-1) < PUSHER_DISTANCE
+                localPusherForce = rotMatrix\[PUSHER_FORCE; 0; 0];
+                localPusherPoint = [-podLength/2;0;0];
+                
+                localForces=[localForces localPusherForce];
+                localPoints=[localPoints localPusherPoint];
+            end
             
-            %forces in global
             
-            %%%GRAVITY IS EXAMPLE, ACTUALLY TRIVIAL%%%
+            %%%%% DRAG FORCE %%%%%
+            drag = DRAG_COEFFICIENT* AIR_DENSITY*podWidth*podHeight*(transVel(1,n-1))^2 / 2;
+            localDragForce = rotMatrix\[-drag;0;0];
+            localDragPoint= [podLength/2; 0; 0];
+            
+            localForces=[localForces localDragForce];
+            localPoints=[localPoints localDragPoint];
+            
+            %%%GRAVITY FORCE%%
             gravityForce=[0 0 -9.8]* mass;
-            gravityPoint=[0 0 0];
             localGravityForce=rotMatrix\gravityForce';
-            localGravityPoint=rotMatrix\gravityPoint';
+            localGravityPoint=[0;0;0];
 
             localForces=[localForces localGravityForce];
             localPoints=[localPoints localGravityPoint];
@@ -186,4 +205,4 @@ function [] = HyperloopSimV2()
     end
     
     plot(transPos(3,:));
-       
+    plot(transPos(1,:));
