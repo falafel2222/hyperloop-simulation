@@ -8,6 +8,7 @@ function [] = HyperloopSimV2()
     
     %set initial variables
     % Tube conditions
+    DISTANCETOFLAT=0.72136;
     DRAG_COEFFICIENT = 0.2;
     AIR_PRESSURE = 1.45;
     AIR_DENSITY = 6900*AIR_PRESSURE/(287*298);
@@ -20,21 +21,23 @@ function [] = HyperloopSimV2()
     podLength = 5; %m
     skateLength = podLength; %m
 
-    mass = 1500; %kg
+    mass = 1750; %kg
     I = [1.0/12*mass*(podHeight^2 + podWidth^2) 0 0; ...
          0 1.0/12*mass*(podHeight^2 + podLength^2) 0; ...
          0 0 1.0/12*mass*(podLength^2 + podWidth^2)];
     CoM = [0,0,0];
 
     timestep = .001; %sec
-    maxTime = 15; %sec
+    maxTime = 5; %sec
     numSteps = maxTime / timestep;
+    idealStartHeight=0.001;
 
     % pod state variables
     transPos = zeros(3, numSteps);
     transVel = zeros(3, numSteps);
     transAcc = zeros(3, numSteps);
-    transPos(3,1) = -.0832;
+    transPos(3,1) = -1*(DISTANCETOFLAT-(podHeight/2)-idealStartHeight);
+    transPos(3,1)
 
     rotPos = zeros(3, numSteps);
     rotVel = zeros(3, numSteps);
@@ -86,7 +89,8 @@ function [] = HyperloopSimV2()
         if mod(n,1000) == 0
             disp('--------------------------')
             disp(n*timestep)
-            disp(transPos(:,n-1))
+            disp(transPos(:,n-1)')
+            disp(transAcc(:,n-1)')
 %             disp(q(:,n-1))
         end
         
@@ -109,16 +113,17 @@ function [] = HyperloopSimV2()
         localForces=[];
         localPoints=[];
            %forces already in local
-           
+
            %%%%% AIR SKATES %%%%%
            skateForces=zeros(3,length(skatePoints));
            for i=1:length(skatePoints)
                 point= rotMatrix*skatePoints(:,i) + transPos(:,n-1);
                 [~, vertDist]=DistanceFinder(point);
+
                 
                 %%% TODO: change the magnitude of vertDistance if the pod is rotated
                 
-                pointForce=SkateForce(vertDist,11e3,skateLength);                
+                pointForce=SkateForce(vertDist,11e3,skateLength);  
                 skateForces(3,i)=pointForce/(2*length(airSkateRight));
             end
             localForces=[localForces skateForces];
@@ -215,6 +220,7 @@ function [] = HyperloopSimV2()
             point = rotMatrix*point + transPos(:,n);
             [distance, ~]=DistanceFinder(point);
             if distance<=0
+                norm(point)
                 disp('Collision Occurred at timestep');
                 disp(n);
                 endSimul=true;
@@ -227,6 +233,4 @@ function [] = HyperloopSimV2()
 
                 
     end
-    
     plot(transPos(3,:));
-    plot(transPos(1,:));

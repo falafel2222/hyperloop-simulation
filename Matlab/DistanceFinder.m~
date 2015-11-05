@@ -1,4 +1,4 @@
-function [radialDistance, vertDist] = DistanceFinder(point)
+function [radialDistance, vertDist] = DistanceFinder(point,n,dispi)
     
     %All values for subtrack option 1
 
@@ -21,6 +21,7 @@ function [radialDistance, vertDist] = DistanceFinder(point)
        gammaAngle=3*pi/2-theta;
        radiusAtTheta=distToFlatM/cos(gammaAngle);
     else
+        gammaAngle=0;
         radiusAtTheta=tubeRadiusM;
     end
     
@@ -28,6 +29,7 @@ function [radialDistance, vertDist] = DistanceFinder(point)
 
         
     radialDistance=radiusAtTheta-radiusOfPoint;
+ 
     vertDist=distToFlatM+zVal;
 
     
