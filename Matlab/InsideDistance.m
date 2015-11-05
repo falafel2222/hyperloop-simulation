@@ -1,9 +1,11 @@
 function [underSideDistance,beamDistance] = InsideDistance(point)
+    %Using dimensions from subtrack 1
+
     % constants of the beam
 
-    topHeight=0.88;
-    middleWidth=0.23;
-    distanceToCenter=23;
+    topHeight=2*.412;
+    middleWidth=.313;
+    distanceToCenter=23.4;
        
     %Distances to beam
     underSideDistance=(-1)*(distanceToCenter+topHeight)-point(3);
