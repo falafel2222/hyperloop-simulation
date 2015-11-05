@@ -4,6 +4,7 @@ function [] = HyperloopSimV2()
     disp('Simulation Started')
     
     randomNoise=false;
+    noiseModifier=0.01;
     
     %set initial variables
     % Tube conditions
@@ -153,11 +154,18 @@ function [] = HyperloopSimV2()
             localForces=[localForces localGravityForce];
             localPoints=[localPoints localGravityPoint];
            
-        noiseModifier=
+        
+        
         if randomNoise
-            torqueNoise=rand([3,size(localForces)(2)]);
-            localForces=localForces+torqueNoise*noiseModifier
-            
+            forceSize=size(localForces);
+            noise=zeros(3,forceSize(2));
+            for i=1:forceSize(2)
+               magForce=norm(localForces(:,i));
+               noise(:,i)=noise(:,i)+magForce*noiseModifier;
+            end
+            localForces=localForces+torqueNoise*noiseModifier 
+        end
+        
         %calculate torques in local
         netTorque=[0 0 0];
            for i=1:length(localPoints)
