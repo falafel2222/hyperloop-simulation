@@ -3,10 +3,14 @@
 function [] = HyperloopSimV2()
     disp('Simulation Started')
     
+    randomNoise=false;
+    torqueNoiseModifier=1;
+    forceNoiseModifier=1;
+    
     %set initial variables
     % Tube conditions
     DRAG_COEFFICIENT = 0.2;
-    AIR_PRESSURE = .1;
+    AIR_PRESSURE = 1.45;
     AIR_DENSITY = 6900*AIR_PRESSURE/(287*298);
     PUSHER_FORCE = 17640; % newtons
     PUSHER_DISTANCE = 243; % meters
@@ -76,10 +80,6 @@ function [] = HyperloopSimV2()
        leftRailWheelPoints(:, i) = [podLength/2-(i-.5)*podLength/numWheels,...
             wheelGap/2, wheelVert-podHeight/2];
     end       
-    
-    rightRailWheelPoints
-    leftRailWheelPoints
-    
     
     disp('Simulation Initialized')
     %%%BEGIN LOOPING THROUGH TIMESTEPS%%%
@@ -163,6 +163,11 @@ function [] = HyperloopSimV2()
               netTorque=netTorque+torque';
            end
         
+        if randomNoise
+            torqueNoise=rand([1,3]);
+            netTorque=netTorque+torqueNoiseModifier*torqueNoise;
+        end
+           
         %get theta accel by tensor\torque
         rotAcc(:,n) = I \ transpose(netTorque);
         
@@ -193,9 +198,11 @@ function [] = HyperloopSimV2()
         for force=globalForces
             netForce = netForce+force';
         end
-%         if mod(n,1)==0
-%             netForce
-%         end
+        
+        if randomNoise
+            forceNoise=rand([1,3]);
+            netTorque=netTorque+forceNoiseModifier*forceNoise;
+        end
         
         %get accel, velocity, position
         transAcc(:,n)=netForce/mass;
