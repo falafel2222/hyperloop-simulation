@@ -60,10 +60,27 @@ function [] = HyperloopSimV2()
     for i=1:numSegments
        airSkateRight(:,i) = [podLength/2-(i-1)*skateLength/(numSegments-1),-podWidth/2,-podHeight/2];
        airSkateLeft(:, i) = [podLength/2-(i-1)*skateLength/(numSegments-1), podWidth/2,-podHeight/2];
-    end
-    
+    end    
     skatePoints=[airSkateLeft airSkateRight];                
-        
+       
+    % points for the rail wheels, while not extended
+    wheelGap = .04; %m
+    wheelVert = .05; %m   
+    numWheels = 8;
+    
+    rightRailWheelPoints = zeros(3,numWheels);
+    leftRailWheelPoints = zeros(3,numWheels);
+    for i=1:numWheels
+       rightRailWheelPoints(:,i) = [podLength/2-(i-.5)*podLength/numWheels,...
+           -wheelGap/2, wheelVert-podHeight/2];
+       leftRailWheelPoints(:, i) = [podLength/2-(i-.5)*podLength/numWheels,...
+            wheelGap/2, wheelVert-podHeight/2];
+    end       
+    
+    rightRailWheelPoints
+    leftRailWheelPoints
+    
+    
     disp('Simulation Initialized')
     %%%BEGIN LOOPING THROUGH TIMESTEPS%%%
     for n = 2:numSteps
