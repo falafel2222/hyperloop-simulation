@@ -28,7 +28,7 @@ function [] = HyperloopSimV2()
     CoM = [0,0,0];
 
     timestep = .001; %sec
-    maxTime = 5; %sec
+    maxTime = 1; %sec
     numSteps = maxTime / timestep;
     idealStartHeight=0.001;
 
@@ -162,11 +162,12 @@ function [] = HyperloopSimV2()
         
         
         if randomNoise
+            
             forceSize=size(localForces);
             noise=zeros(3,forceSize(2));
             for i=1:forceSize(2)
                magForce=norm(localForces(:,i));
-               noise(:,i)=noise(:,i)+magForce*noiseModifier;
+               noise(:,i)=-1*noiseModifier+(2*noiseModifier*rand())*magForce;
             end
             localForces=localForces+torqueNoise*noiseModifier 
         end
