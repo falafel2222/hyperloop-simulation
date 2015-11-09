@@ -8,10 +8,12 @@ classdef Sensor
     methods
         % base constructor
         function s = Sensor(refreshRate,error,location,direction)
-            s.refreshRate = refreshRate;
-            s.error = error;
-            s.location = location;
-            s.direction = direction;
+            if ~nargin == 0
+                s.refreshRate = refreshRate;
+                s.error = error;
+                s.location = location;
+                s.direction = direction;
+            end
         end
     end
 end

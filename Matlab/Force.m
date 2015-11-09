@@ -9,20 +9,23 @@ classdef Force
     end
  
     methods
-        function force = Force(local,location,components)
-           force.isLocal=local;
-           force.location=location;
-           force.components=components;
+        function force = Force(isLocal,location,components,noiseModifier)
+           if ~nargin == 0
+               force.isLocal=isLocal;
+               force.location=location;
+               disp(1+noiseModifier*(1-2*rand()));
+               force.components=components*(1+noiseModifier*(1-2*rand()));
+           end
         end
         
-        function [] = toGlobal(self,rotMatrix)
+        function self = toGlobal(self,rotMatrix)
             if self.isLocal
                self.isLocal=false;
-               self.components=self.rotMatrix*self.components;
+               self.components=rotMatrix*self.components;
             end
         end
         
-        function [] = toLocal(self,rotMatrix)
+        function self = toLocal(self,rotMatrix)
            if ~self.isLocal
                self.isLocal=true;
                self.components = rotMatrix\self.components;
