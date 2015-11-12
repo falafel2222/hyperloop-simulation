@@ -13,10 +13,13 @@ function pd = HyperloopSim()
     PUSHER_DISTANCE = 243; % meters
 
     
-    timestep = .005; %sec
-    maxTime = 2; %sec
+    timestep = .001; %sec
+    maxTime = 10; %sec
     numSteps = maxTime / timestep;
     
+    
+    %%%%%%%%%% CREATE THE POD AND SET ITS INITIAL CONDITIONS %%%%%%%%%%
+   
     % Constructor: podData(mass,length, width, height, numSteps, timestep)
     pd = podData(1500,4,1,1,numSteps,timestep);
     
@@ -27,18 +30,7 @@ function pd = HyperloopSim()
     idealStartHeight=0.001;
     pd.transPos(3,1) = -1*(DISTANCETOFLAT-(pd.height/2)-idealStartHeight);
     
-    %collision points
-%     collisionPoints =   [podLength/2   podWidth/2  -podHeight/2-CoM(3); ...
-%                          podLength/2  -podWidth/2  -podHeight/2-CoM(3); ...
-%                         -podLength/2   podWidth/2  -podHeight/2-CoM(3); ...
-%                         -podLength/2  -podWidth/2  -podHeight/2-CoM(3); ...
-%                          podLength/2   podWidth/2   podHeight/2-CoM(3); ...
-%                          podLength/2  -podWidth/2   podHeight/2-CoM(3); ...
-%                         -podLength/2   podWidth/2   podHeight/2-CoM(3); ...
-%                         -podLength/2  -podWidth/2   podHeight/2-CoM(3)];
-    
-                    
-    %thrust generating points
+    %%% SET AIR THRUSTERS %%%
     numSegments = 2;
     pd.rightSkate=zeros(3,numSegments);
     pd.leftSkate=zeros(3,numSegments);
@@ -47,7 +39,7 @@ function pd = HyperloopSim()
        pd.leftSkate(:, i) = [pd.length/2-(i-.5)*skateLength/(numSegments), pd.width/2,-pd.height/2];
     end
     
-    % points for the rail wheels, while not extended
+    %%% SET RAIL WHEELS %%%
     wheelGap = .04; %m
     wheelVert = .05; %m   
     numWheels = 8;
@@ -61,7 +53,36 @@ function pd = HyperloopSim()
             wheelGap/2, wheelVert-pd.height/2];
     end
     
-
+    %%%%% SET SENSORS %%%%%%
+    
+    
+    % Laser (refreshRate (timesteps),error (%), location, direction)
+    bottomFrontLaser = Laser(ceil(1e3*timestep),1e-3,...
+                            [pd.length/2,0,-pd.height/2],[0,0,-1]);
+    bottomBackLaser = Laser(ceil(1e3*timestep),1e-3,...
+                            [-pd.length/2,0,-pd.height/2],[0,0,-1]);
+    frontRightTrackLaser = Laser(ceil(1e3*timestep),1e-3,...
+                            [pd.length/2,.1,wheelVert-pd.height/2],[0,-1,0]);
+    frontLeftTrackLaser  = Laser(ceil(1e3*timestep),1e-3,...
+                            [pd.length/2,.1,wheelVert-pd.height/2],[0,-1,0]);
+    backRightTrackLaser  = Laser(ceil(1e3*timestep),1e-3,...
+                            [pd.length/2,-.1,wheelVert-pd.height/2],[0,1,0]);
+    backLeftTrackLaser   = Laser(ceil(1e3*timestep),1e-3,...
+                            [pd.length/2,-.1,wheelVert-pd.height/2],[0,1,0]);
+    
+    lasers = [bottomFrontLaser bottomBackLaser frontRightTrackLaser
+        frontLeftTrackLaser backRightTrackLaser backLeftTrackLaser];
+                        
+    photoElectricSensor = Sensor(1e2,0);
+    pitotTube = Sensor(1e2,1e-3);
+    
+    
+    
+    
+    
+    
+    
+    %%%%% OTHER SENSORS %%%%%
     
     disp('Simulation Initialized')
     %%%BEGIN LOOPING THROUGH TIMESTEPS%%%
@@ -70,7 +91,7 @@ function pd = HyperloopSim()
             disp('--------------------------')
             disp(n*timestep)
             disp(pd.transPos(:,n-1)')
-            disp(pd.transAcc(:,n-1)')
+%             disp(pd.transAcc(:,n-1)')
 %             disp(pd.q(:,n-1))
         end
 
@@ -114,15 +135,17 @@ function pd = HyperloopSim()
             localGravityPoint=[0;0;0];
             pd = pd.applyForce(Force(false,localGravityPoint,globalGravityForce,0));
         
-%         if randomNoise
-%             forceSize=size(localForces);
-%             noise=zeros(3,forceSize(2));
-%             for i=1:forceSize(2)
-%                magForce=norm(localForces(:,i));
-%                noise(:,i)=-1*noiseModifier+(2*noiseModifier*rand())*magForce;
+        
+        %%%%% GET NEW SENSOR DATA %%%%%
+        
+%             for laser = lasers
+%                 if mod(n,laser.refreshRate) == 0
+%                     % calculate laser distance and get ready to pass to
+%                     % states
+%                 end                
 %             end
-%             localForces=localForces+torqueNoise*noiseModifier 
-%         end
+            
+            % get other sensors from sensors team and add them
 
         pd = pd.update();
         
@@ -132,21 +155,21 @@ function pd = HyperloopSim()
 %                          atan2(2*(q0*q3+q1*q2),1-2*(q2^2 + q3^2))];
 
         
-%         %check collisions
-%         endSimul=false;
-%         for point = collisionPoints';
-%             point = rotMatrix*point + transPos(:,n);
-%             [distance, ~]=DistanceFinder(point);
-%             if distance<=0
-%                 norm(point)
-%                 disp('Collision Occurred at timestep');
-%                 disp(n);
-%                 endSimul=true;
-%                 break
-%             end
-%         end
-%         if endSimul
-%            break 
-%         end                
+        %check collisions
+        endSimul=false;
+        for point = pd.collisionPoints;
+            point = pd.rotMatrix*point + pd.transPos(:,n);
+            [distance, ~]=DistanceFinder(point);
+            if distance<=0
+                norm(point)
+                disp('Collision Occurred at timestep');
+                disp(n);
+                endSimul=true;
+                break
+            end
+        end
+        if endSimul
+           break 
+        end                
     end
 end

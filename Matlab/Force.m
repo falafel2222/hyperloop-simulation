@@ -13,7 +13,6 @@ classdef Force
            if ~nargin == 0
                force.isLocal=isLocal;
                force.location=location;
-               disp(1+noiseModifier*(1-2*rand()));
                force.components=components*(1+noiseModifier*(1-2*rand()));
            end
         end

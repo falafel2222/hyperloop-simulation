@@ -9,12 +9,13 @@ classdef podData
         rotAcc
         rotMatrix
         
-        q
+        qgithu
         mass
         tensor
         length
         width
         height
+        collisionPoints
 
         netForce
         netTorque
@@ -39,7 +40,17 @@ classdef podData
             pd.tensor=[   1.0/12*mass*(height^2 + width^2) 0 0; ...
                             0 1.0/12*mass*(height^2 + length^2) 0; ...
                             0 0 1.0/12*mass*(length^2 + width^2)];
-            
+                        
+            pd.collisionPoints =[pd.length/2   pd.width/2  -pd.height/2; ...
+                         pd.length/2  -pd.width/2  -pd.height/2; ...
+                        -pd.length/2   pd.width/2  -pd.height/2; ...
+                        -pd.length/2  -pd.width/2  -pd.height/2; ...
+                         pd.length/2   pd.width/2   pd.height/2; ...
+                         pd.length/2  -pd.width/2   pd.height/2; ...
+                        -pd.length/2   pd.width/2   pd.height/2; ...
+                        -pd.length/2  -pd.width/2   pd.height/2]';
+                        
+                        
             pd.transPos = zeros(3, numSteps);
             pd.transVel = zeros(3, numSteps);
             pd.transAcc = zeros(3, numSteps);
