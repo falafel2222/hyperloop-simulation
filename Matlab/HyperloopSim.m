@@ -95,19 +95,24 @@ function pd = HyperloopSim()
 %             disp(pd.q(:,n-1))
         end
 
-           
+           netTorque = 0;
+           netForce = 0;
            %%%%% AIR SKATES %%%%%
 
            for i=1:length(pd.rightSkate(1,:))
                % calculate vertical distance and find the force accordingly 
                [~, vertDist]=DistanceFinder(pd.toGlobal(pd.rightSkate(:,i)));
                f = Force(true,pd.rightSkate(:,i),[0;0;SkateForce(vertDist,11e3,skateLength)],0);
-               pd = pd.applyForce(f);
+               [torque,transForce] =  pd.applyForce(f);
+               netTorque = netTorque + torque;
+               netForce = netForce + transForce;
 
                % same for the left skate
                [~, vertDist]=DistanceFinder(pd.toGlobal(pd.leftSkate(:,i)));
                f = Force(true,pd.leftSkate(:,i),[0;0;SkateForce(vertDist,11e3,skateLength)],0);
-               pd = pd.applyForce(f);
+               [torque,transForce] =  pd.applyForce(f);
+               netTorque = netTorque + torque;
+               netForce = netForce + transForce;
            end
             
             %%%%% RAIL WHEELS %%%%%
@@ -119,7 +124,9 @@ function pd = HyperloopSim()
                 globalPusherForce = [PUSHER_FORCE; 0; 0];
                 localPusherPoint = [-pd.length/2;0;0];
                 pusherForce = Force(false,localPusherPoint,globalPusherForce,.01);
-                pd = pd.applyForce(pusherForce);
+                [torque,transForce] =  pd.applyForce(pusherForce);
+                netTorque = netTorque + torque;
+                netForce = netForce + transForce;
             end
             
             
@@ -128,13 +135,17 @@ function pd = HyperloopSim()
 
             globalDragForce = [-drag;0;0];
             localDragPoint= [pd.length/2; 0; 0];            
-            pd = pd.applyForce(Force(false,localDragPoint,globalDragForce,0));
+            [torque, transForce] = pd.applyForce(Force(false,localDragPoint,globalDragForce,0));
+            netTorque = netTorque + torque;
+            netForce = netForce + transForce;
+            
             
             %%%%% GRAVITY FORCE %%%%%
             globalGravityForce=[0; 0; -9.8]* pd.mass;
             localGravityPoint=[0;0;0];
-            pd = pd.applyForce(Force(false,localGravityPoint,globalGravityForce,0));
-        
+            [torque,transForce] = pd.applyForce(Force(false,localGravityPoint,globalGravityForce,0));
+            netTorque = netTorque + torque;
+            netForce = netForce + transForce;
         
         %%%%% GET NEW SENSOR DATA %%%%%
         
@@ -147,7 +158,7 @@ function pd = HyperloopSim()
             
             % get other sensors from sensors team and add them
 
-        pd = pd.update();
+        pd = pd.update(netTorque,netForce);
         
         %calculate roll, pitch, and yaw
 %         rotPos(:,n-1) = [atan2(2*(q0*q1+q2*q3),1-2*(q1^2 + q2^2)); ...

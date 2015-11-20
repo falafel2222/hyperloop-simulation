@@ -9,7 +9,7 @@ classdef podData
         rotAcc
         rotMatrix
         
-        qgithu
+        q
         mass
         tensor
         length
@@ -121,20 +121,19 @@ classdef podData
                             2*(q1*q3-q0*q2) 2*(q2*q3+q0*q1) 1-2*q1^2-2*q2^2];
         end
         
-        function self = applyForce(self,force)
+        function [torque,transForce] = applyForce(self,force)
            % Translational (in global)
            force = force.toGlobal(self.rotMatrix);
-           self.netForce = self.netForce + force.components;
-
+           transForce = force.components;
+           
            % Rotational (in local)
            force = force.toLocal(self.rotMatrix);
            torque = cross(force.location,force.components);
-           self.netTorque = self.netTorque + torque;
         end
         
-        function self = update(self)
-            self = self.updateRotational(self.tensor \ self.netTorque);
-            self = self.updateTranslational(self.netForce / self.mass);
+        function self = update(self, netTorque, netForce)
+            self.netTorque = netTorque;
+            self.netForce = netForce;
             self = self.updateQuaternions();
             self.netForce = [0;0;0];
             self.netTorque = [0;0;0];
