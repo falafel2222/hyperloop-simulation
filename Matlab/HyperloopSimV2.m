@@ -27,7 +27,7 @@ function [] = HyperloopSimV2()
          0 0 1.0/12*mass*(podLength^2 + podWidth^2)];
     CoM = [0,0,0];
 
-    timestep = .001; %sec
+    timestep = .0001; %sec
     maxTime = 1; %sec
     numSteps = maxTime / timestep;
     idealStartHeight=0.001;
@@ -81,7 +81,17 @@ function [] = HyperloopSimV2()
            -wheelGap/2, wheelVert-podHeight/2];
        leftRailWheelPoints(:, i) = [podLength/2-(i-.5)*podLength/numWheels,...
             wheelGap/2, wheelVert-podHeight/2];
-    end       
+    end
+    
+    %%%% for kalman filter %%%%
+    
+    covariance = zeros(10);
+    
+    % state is a 10x1 matrix of [position velocity quaternions]
+    state = [transPos(:,1)' transVel(:,1)' q(:,1)']';
+    
+    kalmanHistory = zeros(10,numSteps);
+    
     
     disp('Simulation Initialized')
     %%%BEGIN LOOPING THROUGH TIMESTEPS%%%
@@ -91,20 +101,18 @@ function [] = HyperloopSimV2()
             disp(n*timestep)
             disp(transPos(:,n-1)')
             disp(transAcc(:,n-1)')
-%             disp(q(:,n-1))
         end
         
         
         
         %calculate center of mass, tensor of inertia
-        
-        %find quaternions based on previous quaternion values
-         q0=q(4,n-1);
-         q1=q(1,n-1);
-         q2=q(2,n-1);
-         q3=q(3,n-1);
+        %%%% not implemeneted yet - maybe never %%%%
          
         %calculate rotation matrix
+        q0=q(4,n-1);
+        q1=q(1,n-1);
+        q2=q(2,n-1);
+        q3=q(3,n-1);
         rotMatrix=[1-2*q2^2-2*q3^2 2*(q1*q2-q0*q3) 2*(q1*q3+q0*q2);...
                    2*(q1*q2+q0*q3) 1-2*q1^2-2*q3^2 2*(q2*q3-q0*q1);...
                    2*(q1*q3-q0*q2) 2*(q2*q3+q0*q1) 1-2*q1^2-2*q2^2];
@@ -190,7 +198,9 @@ function [] = HyperloopSimV2()
                      rotVel(2,n) -rotVel(1,n) 0 rotVel(3,n);...
                     -rotVel(1,n) -rotVel(2,n) -rotVel(3,n) 0;];
 
-        qn=q(:,n-1)+0.5*OmegaMatrix*q(:,n-1);
+        qdot = 0.5*OmegaMatrix*q(:,n-1);
+                
+        qn=q(:,n-1)+timestep*qdot;
         normQuat=sqrt(sum(qn.^2));
         qn=qn./normQuat;
         
@@ -215,6 +225,23 @@ function [] = HyperloopSimV2()
         transVel(:,n) = transVel(:,n-1) + transAcc(:,n)*timestep;
         transPos(:,n) = transPos(:,n-1) + transVel(:,n)*timestep;
         
+        
+        %%%%%%%%%%% KALMAN FILTER STEP %%%%%%%%%%%%%%%%%%%%
+        
+        % for bare bones implementation testing, we'll have no corrective
+        % anything and perfect IMU data
+        sensorData = [0 0 0 0 0 0 0];
+        execution =  [0 0 0 0 0 0 0];
+        
+        IMUData = [transAcc(:,n)' rotVel(:,n)']';
+
+        % add random noise
+%         IMUData = (.01*(rand(1)-.5)).*[1 1 1 1 1 1]' + IMUData;
+        
+        [state, covariance] = KalmanFilterHyperloop(state, covariance, IMUData, sensorData, execution);
+        
+        kalmanHistory(:,n) = state;
+        
         %check collisions
         endSimul=false;
         for point = collisionPoints';
@@ -235,3 +262,5 @@ function [] = HyperloopSimV2()
                 
     end
     plot(transPos(3,:));
+    figure();
+    plot(kalmanHistory(3,:));
