@@ -3,8 +3,16 @@
 function [] = HyperloopSimV2()
     disp('Simulation Started')
     
-    randomNoise=false;
-    noiseModifier=0.01;
+    stripDistances=[100 200 300 400 500 600 700 800 900 1000 1100 1200 1300 1400 1500 1600 1700 1800 1900 2000 2100 2200 2300 2400 2500 2600 2700 2800 2900 3000 3100 3200 3300 3400 3500 3600 3700 3800 3900 4000 4100 4200 ...
+        4280 4280+(1/3) 4280+(2/3) 4281 4281+(1/3) 4281+(2/3) 4282 4281+(1/3) 4281+(2/3) 4282 4282+(1/3) 4282+(2/3) 4283 4283+(1/3) 4283+(2/3) 4284 4284+(1/3) 4284+(2/3) 4285 4285+(1/3) ...
+        4300 4400 4500 4600 4700 ...
+        4780 4780+(1/3) 4780+(2/3) 4781 4781+(1/3) 4781+(2/3) 4782 4782+(1/3) 4782+(2/3) 4783 ...
+        4800 4900 5000 5100 5200]*12*0.0254;
+    stripWidth=2*0.0254;
+    
+    
+    randomNoise=true;
+    noiseModifier=0.0001;
     
     %set initial variables
     % Tube conditions
@@ -90,7 +98,7 @@ function [] = HyperloopSimV2()
     % state is a 10x1 matrix of [position velocity quaternions]
     state = [transPos(:,1)' transVel(:,1)' q(:,1)']';
     
-    kalmanHistory = zeros(10,numSteps);
+    kalmanHistory = zeros(10,numSteps/10);
     
     
     disp('Simulation Initialized')
@@ -177,7 +185,7 @@ function [] = HyperloopSimV2()
                magForce=norm(localForces(:,i));
                noise(:,i)=-1*noiseModifier+(2*noiseModifier*rand())*magForce;
             end
-            localForces=localForces+torqueNoise*noiseModifier 
+            localForces=localForces+noise; 
         end
         
         %calculate torques in local
@@ -230,17 +238,48 @@ function [] = HyperloopSimV2()
         
         % for bare bones implementation testing, we'll have no corrective
         % anything and perfect IMU data
-        sensorData = [0 0 0 0 0 0 0];
-        execution =  [0 0 0 0 0 0 0];
         
-        IMUData = [transAcc(:,n)' rotVel(:,n)']';
+        if mod(n,10) == 0
+            
+            %%%%% GET SENSOR DATA %%%%%
+            
+            % laser scanners
+            scanner1Pos = [0; 0; 0];
+            [~, scanner1dist] = DistanceFinder(rotMatrix*scanner1Pos); 
+            
+            scanner2Pos = [0; 0; 0];
+            [~, scanner2dist] = DistanceFinder(rotMatrix*scanner2Pos); 
+            
+            scanner3Pos = [0; 0; 0];
+            [~, scanner1dist] = InsideDistance(rotMatrix*scanner3Pos); 
+            
+            
+            % photoelectric 
+            
+            photo1Pos = [0; 0; 0];
+            % not exactly sure how photoelectric sensors work
+            % empirical testing data on range/angles and how strongly
+            % they pick up colors would be real nice
+            
+            % range lasers
+            
+            %?????
+            
+            
+            sensorData = [0 0 0 0 0 0 0];
+            execution =  [0 0 0 0 0 0 0];
 
-        % add random noise
-%         IMUData = (.01*(rand(1)-.5)).*[1 1 1 1 1 1]' + IMUData;
+            IMUData = [transAcc(:,n)' rotVel(:,n)']';
+            IMUData = IMUData + [0 0 9.81 0 0 0]';
+
+            % add random noise
+            IMUData = (.1*(rand(1)-.5)).*[1 1 1 1 1 1]' + IMUData;
+
+            [state, covariance] = KalmanFilterHyperloop(state, covariance, IMUData, sensorData, execution);
+
+            kalmanHistory(:,n/10) = state;
+        end
         
-        [state, covariance] = KalmanFilterHyperloop(state, covariance, IMUData, sensorData, execution);
-        
-        kalmanHistory(:,n) = state;
         
         %check collisions
         endSimul=false;
@@ -262,5 +301,6 @@ function [] = HyperloopSimV2()
                 
     end
     plot(transPos(3,:));
-    figure();
+    hold on
     plot(kalmanHistory(3,:));
+    hold off
