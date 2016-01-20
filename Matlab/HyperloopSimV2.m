@@ -1,4 +1,5 @@
-%Created by Alex Goldstein and Adam Shaw
+% Hyperloop pod simulation for the OpenLoop Team
+% Created by Alex Goldstein and Adam Shaw
 
 function [] = HyperloopSimV2()
     disp('Simulation Started')
@@ -110,11 +111,6 @@ function [] = HyperloopSimV2()
             disp(transPos(:,n-1)')
             disp(transAcc(:,n-1)')
         end
-        
-        
-        
-        %calculate center of mass, tensor of inertia
-        %%%% not implemeneted yet - maybe never %%%%
          
         %calculate rotation matrix
         q0=q(4,n-1);
@@ -135,9 +131,6 @@ function [] = HyperloopSimV2()
            for i=1:length(skatePoints)
                 point= rotMatrix*skatePoints(:,i) + transPos(:,n-1);
                 [~, vertDist]=DistanceFinder(point);
-
-                
-                %%% TODO: change the magnitude of vertDistance if the pod is rotated
                 
                 pointForce=SkateForce(vertDist,11e3,skateLength);  
                 skateForces(3,i)=pointForce/(2*length(airSkateRight));
@@ -145,10 +138,7 @@ function [] = HyperloopSimV2()
             localForces=[localForces skateForces];
             localPoints=[localPoints skatePoints];
             
-            %%%%% RAIL WHEELS %%%%%
-             % will do later when we get better estimates
-             
-             
+
             %%%%% SPACEX PUSHER %%%%%
             if transPos(1,n-1) < PUSHER_DISTANCE
                 localPusherForce = rotMatrix\[PUSHER_FORCE; 0; 0];
@@ -251,19 +241,8 @@ function [] = HyperloopSimV2()
             [~, scanner2dist] = DistanceFinder(rotMatrix*scanner2Pos); 
             
             scanner3Pos = [0; 0; 0];
-            [~, scanner1dist] = InsideDistance(rotMatrix*scanner3Pos); 
+            [~, scanner3dist] = InsideDistance(rotMatrix*scanner3Pos); 
             
-            
-            % photoelectric 
-            
-            photo1Pos = [0; 0; 0];
-            % not exactly sure how photoelectric sensors work
-            % empirical testing data on range/angles and how strongly
-            % they pick up colors would be real nice
-            
-            % range lasers
-            
-            %?????
             
             
             sensorData = [0 0 0 0 0 0 0];
@@ -300,7 +279,3 @@ function [] = HyperloopSimV2()
 
                 
     end
-    plot(transPos(3,:));
-    hold on
-    plot(kalmanHistory(3,:));
-    hold off
