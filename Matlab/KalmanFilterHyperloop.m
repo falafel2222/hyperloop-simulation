@@ -1,5 +1,9 @@
 function [predictedState, predictedCovariance] = KalmanFilterHyperloop( prevState, prevCovariance, IMUData, sensorData, execution )
 
+globals = globalData();
+pod = podData();
+tube = tubeData();
+
 sensorPositions = zeros(7,3);
 sensorPositions(1,:) = [0,0,-0.5];
 sensorDirections = zeros(7,3);
@@ -7,7 +11,7 @@ sensorDirections(1,:) = [0,0,-1];
 thicknessOfRail = .05;
 tubeCenterToTopOfRail=.4;
 tubeRadius=0.889;
-stepsPerSecond=1000;
+stepsPerSecond=100;
 gravity=9.81;
 airDensity=1;
 maxBrightness=1;

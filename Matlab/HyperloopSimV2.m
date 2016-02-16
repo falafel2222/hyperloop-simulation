@@ -4,16 +4,11 @@
 function [] = HyperloopSimV2()
     disp('Simulation Started')
     
-    stripDistances=[100 200 300 400 500 600 700 800 900 1000 1100 1200 1300 1400 1500 1600 1700 1800 1900 2000 2100 2200 2300 2400 2500 2600 2700 2800 2900 3000 3100 3200 3300 3400 3500 3600 3700 3800 3900 4000 4100 4200 ...
-        4280 4280+(1/3) 4280+(2/3) 4281 4281+(1/3) 4281+(2/3) 4282 4281+(1/3) 4281+(2/3) 4282 4282+(1/3) 4282+(2/3) 4283 4283+(1/3) 4283+(2/3) 4284 4284+(1/3) 4284+(2/3) 4285 4285+(1/3) ...
-        4300 4400 4500 4600 4700 ...
-        4780 4780+(1/3) 4780+(2/3) 4781 4781+(1/3) 4781+(2/3) 4782 4782+(1/3) 4782+(2/3) 4783 ...
-        4800 4900 5000 5100 5200]*12*0.0254;
-    stripWidth=2*0.0254;
+    globals = globalData();
+    pod = podData();
+    tube = tubeData();
     
-    
-    randomNoise=true;
-    noiseModifier=0.00000001;
+    kalmanFreq = globals.kalmanTimestep/globals.timestep;
     
     %set initial variables
     % Tube conditions
@@ -21,51 +16,25 @@ function [] = HyperloopSimV2()
     DRAG_COEFFICIENT = 0.2;
     AIR_PRESSURE = 1.45;
     AIR_DENSITY = 6900*AIR_PRESSURE/(287*298);
-    PUSHER_FORCE = 17640; % newtons
-    PUSHER_DISTANCE = 243; % meters
     
-    %pod dimensions
-    podHeight = 1; %m
-    podWidth = 1; %m
-    podLength = 5; %m
-    skateLength = podLength; %m
+    skateLength = pod.length; %m
 
-    mass = 1750; %kg
-    I = [1.0/12*mass*(podHeight^2 + podWidth^2) 0 0; ...
-         0 1.0/12*mass*(podHeight^2 + podLength^2) 0; ...
-         0 0 1.0/12*mass*(podLength^2 + podWidth^2)];
-    CoM = [0,0,0];
-
-    timestep = .0001; %sec
-    maxTime = 10; %sec
-    numSteps = maxTime / timestep;
     idealStartHeight=0.001;
 
     % pod state variables
-    transPos = zeros(3, numSteps);
-    transVel = zeros(3, numSteps);
-    transAcc = zeros(3, numSteps);
-    transPos(3,1) = -1*(DISTANCETOFLAT-(podHeight/2)-idealStartHeight);
+    transPos = zeros(3, globals.numSteps);
+    transVel = zeros(3, globals.numSteps);
+    transAcc = zeros(3, globals.numSteps);
+    transPos(3,1) = -1*(DISTANCETOFLAT-(pod.height/2)-idealStartHeight);
     transPos(3,1)
 
-    rotPos = zeros(3, numSteps);
-    rotVel = zeros(3, numSteps);
-    rotAcc = zeros(3, numSteps);
+    rotPos = zeros(3, globals.numSteps);
+    rotVel = zeros(3, globals.numSteps);
+    rotAcc = zeros(3, globals.numSteps);
 
-    q=zeros(4, numSteps);
+    q=zeros(4, globals.numSteps);
     q(:,1)=[0.000001;0.000001;0.000001; sqrt(1-3*.000001^2)];
-       
-        
-    %collision points
-    collisionPoints =   [podLength/2   podWidth/2  -podHeight/2-CoM(3); ...
-                         podLength/2  -podWidth/2  -podHeight/2-CoM(3); ...
-                        -podLength/2   podWidth/2  -podHeight/2-CoM(3); ...
-                        -podLength/2  -podWidth/2  -podHeight/2-CoM(3); ...
-                         podLength/2   podWidth/2   podHeight/2-CoM(3); ...
-                         podLength/2  -podWidth/2   podHeight/2-CoM(3); ...
-                        -podLength/2   podWidth/2   podHeight/2-CoM(3); ...
-                        -podLength/2  -podWidth/2   podHeight/2-CoM(3)];
-    
+               
                     
     %thrust generating points
     numSegments = 2;
@@ -73,8 +42,8 @@ function [] = HyperloopSimV2()
     airSkateRight=zeros(3,numSegments);
     airSkateLeft=zeros(3,numSegments);
     for i=1:numSegments
-       airSkateRight(:,i) = [podLength/2-(i-1)*skateLength/(numSegments-1),-podWidth/2,-podHeight/2];
-       airSkateLeft(:, i) = [podLength/2-(i-1)*skateLength/(numSegments-1), podWidth/2,-podHeight/2];
+       airSkateRight(:,i) = [pod.length/2-(i-1)*skateLength/(numSegments-1),-pod.width/2,-pod.width/2];
+       airSkateLeft(:, i) = [pod.length/2-(i-1)*skateLength/(numSegments-1), pod.width/2,-pod.height/2];
     end    
     skatePoints=[airSkateLeft airSkateRight];                
        
@@ -86,10 +55,10 @@ function [] = HyperloopSimV2()
     rightRailWheelPoints = zeros(3,numWheels);
     leftRailWheelPoints = zeros(3,numWheels);
     for i=1:numWheels
-       rightRailWheelPoints(:,i) = [podLength/2-(i-.5)*podLength/numWheels,...
-           -wheelGap/2, wheelVert-podHeight/2];
-       leftRailWheelPoints(:, i) = [podLength/2-(i-.5)*podLength/numWheels,...
-            wheelGap/2, wheelVert-podHeight/2];
+       rightRailWheelPoints(:,i) = [pod.length/2-(i-.5)*pod.length/numWheels,...
+           -wheelGap/2, wheelVert-pod.height/2];
+       leftRailWheelPoints(:, i) = [pod.length/2-(i-.5)*pod.length/numWheels,...
+            wheelGap/2, wheelVert-pod.height/2];
     end
     
     %%%% for kalman filter %%%%
@@ -99,15 +68,15 @@ function [] = HyperloopSimV2()
     % state is a 10x1 matrix of [position velocity quaternions]
     state = [transPos(:,1)' transVel(:,1)' q(:,1)']';
     
-    kalmanHistory = zeros(10,numSteps/10);
+    kalmanHistory = zeros(10,globals.numSteps/kalmanFreq);
     
     
     disp('Simulation Initialized')
     %%%BEGIN LOOPING THROUGH TIMESTEPS%%%
-    for n = 2:numSteps
+    for n = 2:globals.numSteps
         if mod(n,1000) == 0
             disp('--------------------------')
-            disp(n*timestep)
+            disp(n*globals.timestep)
             disp(transPos(:,n-1)')
             disp(transAcc(:,n-1)')
         end
@@ -140,9 +109,9 @@ function [] = HyperloopSimV2()
             
 
             %%%%% SPACEX PUSHER %%%%%
-            if transPos(1,n-1) < PUSHER_DISTANCE
-                localPusherForce = rotMatrix\[PUSHER_FORCE; 0; 0];
-                localPusherPoint = [-podLength/2;0;0];
+            if transPos(1,n-1) < globals.pusherDistance
+                localPusherForce = rotMatrix\[globals.pusherForce; 0; 0];
+                localPusherPoint = [-pod.length/2;0;0];
                 
                 localForces=[localForces localPusherForce];
                 localPoints=[localPoints localPusherPoint];
@@ -150,15 +119,15 @@ function [] = HyperloopSimV2()
             
             
             %%%%% DRAG FORCE %%%%%
-            drag = DRAG_COEFFICIENT* AIR_DENSITY*podWidth*podHeight*(transVel(1,n-1))^2 / 2;
+            drag = DRAG_COEFFICIENT* AIR_DENSITY*pod.width*pod.height*(transVel(1,n-1))^2 / 2;
             localDragForce = rotMatrix\[-drag;0;0];
-            localDragPoint= [podLength/2; 0; 0];
+            localDragPoint= [pod.length/2; 0; 0];
             
             localForces=[localForces localDragForce];
             localPoints=[localPoints localDragPoint];
             
             %%%GRAVITY FORCE%%
-            gravityForce=[0 0 -9.8]* mass;
+            gravityForce=[0 0 -1*globals.gravity]* pod.mass;
             localGravityForce=rotMatrix\gravityForce';
             localGravityPoint=[0;0;0];
 
@@ -167,13 +136,13 @@ function [] = HyperloopSimV2()
            
         
         
-        if randomNoise
+        if globals.randomNoise
             
             forceSize=size(localForces);
             noise=zeros(3,forceSize(2));
             for i=1:forceSize(2)
                magForce=norm(localForces(:,i));
-               noise(:,i)=-1*noiseModifier+(2*noiseModifier*rand())*magForce;
+               noise(:,i)=-1*globals.noiseModifier+(2*globals.noiseModifier*rand())*magForce;
             end
             localForces=localForces+noise; 
         end
@@ -186,10 +155,10 @@ function [] = HyperloopSimV2()
            end
                    
         %get theta accel by tensor\torque
-        rotAcc(:,n) = I \ transpose(netTorque);
+        rotAcc(:,n) = pod.tensor \ transpose(netTorque);
         
         %update omega, calculate omega matrix, update quaternions
-        rotVel(:,n) = rotVel(:,n-1) + timestep * rotAcc(:,n);
+        rotVel(:,n) = rotVel(:,n-1) + globals.timestep * rotAcc(:,n);
 
         OmegaMatrix=[0 rotVel(3,n) -rotVel(2,n) rotVel(1,n);...
                     -rotVel(3,n) 0 rotVel(1,n) rotVel(2,n);...
@@ -198,7 +167,7 @@ function [] = HyperloopSimV2()
 
         qdot = 0.5*OmegaMatrix*q(:,n-1);
                 
-        qn=q(:,n-1)+timestep*qdot;
+        qn=q(:,n-1)+globals.timestep*qdot;
         normQuat=sqrt(sum(qn.^2));
         qn=qn./normQuat;
         
@@ -219,9 +188,9 @@ function [] = HyperloopSimV2()
         end
                 
         %get accel, velocity, position
-        transAcc(:,n)=netForce/mass;
-        transVel(:,n) = transVel(:,n-1) + transAcc(:,n)*timestep;
-        transPos(:,n) = transPos(:,n-1) + transVel(:,n)*timestep;
+        transAcc(:,n)=netForce/pod.mass;
+        transVel(:,n) = transVel(:,n-1) + transAcc(:,n)*globals.timestep;
+        transPos(:,n) = transPos(:,n-1) + transVel(:,n)*globals.timestep;
         
         
         %%%%%%%%%%% KALMAN FILTER STEP %%%%%%%%%%%%%%%%%%%%
@@ -229,7 +198,7 @@ function [] = HyperloopSimV2()
         % for bare bones implementation testing, we'll have no corrective
         % anything and perfect IMU data
         
-        if mod(n,10) == 0
+        if mod(n,kalmanFreq) == 0
             
             %%%%% GET SENSOR DATA %%%%%
             
@@ -239,9 +208,8 @@ function [] = HyperloopSimV2()
             pitch = asin(2*(q0*q2 - q3*q1));
             
             % laser scanners
-            scanner1Pos = [0; 0; transPos(3,n)-podHeight/2];
+            scanner1Pos = [0; 0; transPos(3,n)-pod.height/2];
             [~, scanner1dist] = DistanceFinder(rotMatrix*scanner1Pos);
-            display(scanner1dist)
             
             scanner2Pos = [0; 0; 0];
             [~, scanner2dist] = DistanceFinder(rotMatrix*scanner2Pos); 
@@ -259,28 +227,28 @@ function [] = HyperloopSimV2()
             IMUData = IMUData + [0 0 9.81 0 0 0]';
 
             % add random noise
-            IMUData = IMUData + (.01*(rand(1)-.5)).*IMUData;
+            IMUData = IMUData + (.001*(rand(1)-.5)).*IMUData;
             sensorData = (1 + .01*(rand(1)-.5)).*sensorData;
 
             [state, covariance] = KalmanFilterHyperloop(state, covariance, IMUData, sensorData, execution);
 
-            kalmanHistory(:,n/10) = state;
+            kalmanHistory(:,n/kalmanFreq) = state;
         end
         
         
         %check collisions
         endSimul=false;
-        for point = collisionPoints';
-            point = rotMatrix*point + transPos(:,n);
-            [distance, ~]=DistanceFinder(point);
-            if distance<=0
-                norm(point)
-                disp('Collision Occurred at timestep');
-                disp(n);
-                endSimul=true;
-                break
-            end
-        end
+%         for point = pod.collisionPoints;
+%             point = rotMatrix*point + transPos(:,n);
+%             [distance, ~]=DistanceFinder(point);
+%             if distance<=0
+%                 norm(point)
+%                 disp('Collision Occurred at timestep');
+%                 disp(n);
+%                 endSimul=true;
+%                 break
+%             end
+%         end
         if endSimul
            break 
         end
@@ -292,7 +260,7 @@ function [] = HyperloopSimV2()
     display(size(transPos(3,:)))
     plot(kalmanHistory(3,:))
     hold on
-    plot(downsample(transPos(3,:),10));
+    plot(downsample(transPos(3,:),kalmanFreq));
     hold off
     
 end
