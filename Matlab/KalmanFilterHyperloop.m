@@ -1,10 +1,12 @@
 function [predictedState, predictedCovariance] = KalmanFilterHyperloop( prevState, prevCovariance, IMUData, sensorData, execution )
 
 sensorPositions = zeros(7,3);
+sensorPositions(1,:) = [0,0,-0.5];
 sensorDirections = zeros(7,3);
+sensorDirections(1,:) = [0,0,-1];
 thicknessOfRail = .05;
 tubeCenterToTopOfRail=.4;
-tubeRadius=1.5;
+tubeRadius=0.889;
 stepsPerSecond=1000;
 gravity=9.81;
 airDensity=1;
@@ -190,7 +192,7 @@ xkp1k(7:10)=xkp1k(7:10)./normQuat;
 % CORRECTIVE STEP 1, XZ LASER SCANNER
 if execution(1)==1
         
-    z1kp1 = sensorData(1,:);
+    z1kp1 = sensorData(:,1);
     
     rz1=xkp1k(3);
     q11=xkp1k(7);  
@@ -200,8 +202,8 @@ if execution(1)==1
     Rot1=[1-2*q12^2-2*q13^2 2*(q11*q12-q10*q13) 2*(q11*q13+q10*q12);...
      2*(q11*q12+q10*q13) 1-2*q11^2-2*q13^2 2*(q12*q13-q10*q11);...
      2*(q11*q13-q10*q12) 2*(q12*q13+q10*q11) 1-2*q11^2-2*q12^2;];
-    sz1=(Rot1(3,:)*p1+rz1);
-    sq1=sqrt(Rot1(2,2)^+Rot1(1,2)^2);
+    sz1=(Rot1(3,:)*p1+rz1+0.72136);
+    sq1=sqrt(Rot1(2,2)^2+Rot1(1,2)^2);
     
     dd1dq1=(sq1*([2*q13 2*q10 -4*q11]*p1)-sz1*(Rot1(2,2)*(-4*q11) + Rot1(1,2)*2*q12)/sq1)/(sq1^2);
     dd1dq2=(sq1*([-2*q10 2*q13 -4*q12]*p1)-sz1*(Rot1(2,2)*0 + Rot1(1,2)*2*q11)/sq1)/(sq1^2);
@@ -216,13 +218,14 @@ if execution(1)==1
     
     H1kp1=[0 0 1/sq1 0 0 0 dd1dq1 dd1dq2 dd1dq3 dd1dq0;...
             0 0 0 0 0 0 dtheta1dq1 dtheta1dq2 dtheta1dq3 dtheta1dq0;];
-    S1kp1=XZScannerCovariance; %Experimentally determined
+    S1kp1=diag([0.01,100000]);%XZScannerCovariance; %Experimentally determined
+    
     K1kp1=Pkp1k*H1kp1'/(H1kp1*Pkp1k*H1kp1'+S1kp1);
 
-    
+
     h1kp1=[sz1/sq1;...
            acos((Rot1(1,2)*Rot1(2,1)-Rot1(1,1)*Rot1(2,2))/sq1);];
-        
+       
     x1kp1kp1=xkp1k+K1kp1*(z1kp1-h1kp1);
     P1kp1kp1=(eye(10,10)-K1kp1*H1kp1)*Pkp1k;
     
@@ -249,7 +252,7 @@ if execution(2)==1
      2*(q21*q22+q20*q23) 1-2*q21^2-2*q23^2 2*(q22*q23-q20*q21);...
      2*(q21*q23-q20*q22) 2*(q22*q23+q20*q21) 1-2*q21^2-2*q22^2;];
     sz2=(Rot2(3,:)*p2+rz2);
-    sq2=sqrt(Rot2(2,1)^+Rot2(1,1)^2);
+    sq2=sqrt(Rot2(2,1)^2+Rot2(1,1)^2);
     
     
     dd2dq1=(sq2*([2*q23 2*q20 -4*q21]*p2)-sz2*(Rot2(2,1)*(2*q22) + Rot2(1,1)*0)/sq2)/(sq2^2);

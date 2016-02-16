@@ -13,7 +13,7 @@ function [] = HyperloopSimV2()
     
     
     randomNoise=true;
-    noiseModifier=0.0001;
+    noiseModifier=0.00000001;
     
     %set initial variables
     % Tube conditions
@@ -37,7 +37,7 @@ function [] = HyperloopSimV2()
     CoM = [0,0,0];
 
     timestep = .0001; %sec
-    maxTime = 1; %sec
+    maxTime = 10; %sec
     numSteps = maxTime / timestep;
     idealStartHeight=0.001;
 
@@ -53,7 +53,7 @@ function [] = HyperloopSimV2()
     rotAcc = zeros(3, numSteps);
 
     q=zeros(4, numSteps);
-    q(:,1)=[0;0;.0; 1];
+    q(:,1)=[0.000001;0.000001;0.000001; sqrt(1-3*.000001^2)];
        
         
     %collision points
@@ -94,7 +94,7 @@ function [] = HyperloopSimV2()
     
     %%%% for kalman filter %%%%
     
-    covariance = zeros(10);
+    covariance = .001*eye(10);
     
     % state is a 10x1 matrix of [position velocity quaternions]
     state = [transPos(:,1)' transVel(:,1)' q(:,1)']';
@@ -233,26 +233,34 @@ function [] = HyperloopSimV2()
             
             %%%%% GET SENSOR DATA %%%%%
             
+            %%%%% GET ROLL, PITCH, YAW %%%%%
+            
+            roll = atan2(2*(q0*q1+ q2*q3),1-2*(q1^2 + q2^2));
+            pitch = asin(2*(q0*q2 - q3*q1));
+            
             % laser scanners
-            scanner1Pos = [0; 0; 0];
-            [~, scanner1dist] = DistanceFinder(rotMatrix*scanner1Pos); 
+            scanner1Pos = [0; 0; transPos(3,n)-podHeight/2];
+            [~, scanner1dist] = DistanceFinder(rotMatrix*scanner1Pos);
+            display(scanner1dist)
             
             scanner2Pos = [0; 0; 0];
             [~, scanner2dist] = DistanceFinder(rotMatrix*scanner2Pos); 
             
             scanner3Pos = [0; 0; 0];
-            [~, scanner3dist] = InsideDistance(rotMatrix*scanner3Pos); 
+            [~, scanner3dist] = InsideDistance(rotMatrix*scanner3Pos);
+
             
             
             
-            sensorData = [0 0 0 0 0 0 0];
-            execution =  [0 0 0 0 0 0 0];
+            sensorData = [[scanner1dist; pitch] [0;0] [0;0] [0;0] [0;0] [0;0] [0;0]];
+            execution =  [1 0 0 0 0 0 0];
 
             IMUData = [transAcc(:,n)' rotVel(:,n)']';
             IMUData = IMUData + [0 0 9.81 0 0 0]';
 
             % add random noise
-            IMUData = (.1*(rand(1)-.5)).*[1 1 1 1 1 1]' + IMUData;
+            IMUData = IMUData + (.01*(rand(1)-.5)).*IMUData;
+            sensorData = (1 + .01*(rand(1)-.5)).*sensorData;
 
             [state, covariance] = KalmanFilterHyperloop(state, covariance, IMUData, sensorData, execution);
 
@@ -279,3 +287,12 @@ function [] = HyperloopSimV2()
 
                 
     end
+    
+    display(size(kalmanHistory(3,:)))
+    display(size(transPos(3,:)))
+    plot(kalmanHistory(3,:))
+    hold on
+    plot(downsample(transPos(3,:),10));
+    hold off
+    
+end
