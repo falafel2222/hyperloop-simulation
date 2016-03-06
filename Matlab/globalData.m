@@ -4,12 +4,12 @@ classdef globalData
         
         %%% TIMING %%%
         timestep = .001 %s
-        kalmanTimestep = .01 %s
-        runtime = 10 %s
+        kalmanTimestep = .1 %s
+        runtime = 5 %s
         numSteps
 
         %%% SIMULATION OPTIONS %%%
-        randomNoise=true;
+        randomNoise=false;
         noiseModifier=0.00000001;
             
         %%% TUBE SPECS %%%

@@ -4,29 +4,18 @@
 function [] = HyperloopSimV2()
     disp('Simulation Started')
     
+    
     globals = globalData();
     pod = podData();
     tube = tubeData();
     
     kalmanFreq = globals.kalmanTimestep/globals.timestep;
-    
-    %set initial variables
-    % Tube conditions
-    DISTANCETOFLAT=0.72136;
-    DRAG_COEFFICIENT = 0.2;
-    AIR_PRESSURE = 1.45;
-    AIR_DENSITY = 6900*AIR_PRESSURE/(287*298);
-    
-    skateLength = pod.length; %m
-
-    idealStartHeight=0.001;
 
     % pod state variables
     transPos = zeros(3, globals.numSteps);
     transVel = zeros(3, globals.numSteps);
     transAcc = zeros(3, globals.numSteps);
-    transPos(3,1) = -1*(DISTANCETOFLAT-(pod.height/2)-idealStartHeight);
-    transPos(3,1)
+    transPos(3,1) = -.01;
 
     rotPos = zeros(3, globals.numSteps);
     rotVel = zeros(3, globals.numSteps);
@@ -34,41 +23,17 @@ function [] = HyperloopSimV2()
 
     q=zeros(4, globals.numSteps);
     q(:,1)=[0.000001;0.000001;0.000001; sqrt(1-3*.000001^2)];
-               
-                    
-    %thrust generating points
-    numSegments = 2;
+
     
-    airSkateRight=zeros(3,numSegments);
-    airSkateLeft=zeros(3,numSegments);
-    for i=1:numSegments
-       airSkateRight(:,i) = [pod.length/2-(i-1)*skateLength/(numSegments-1),-pod.width/2,-pod.width/2];
-       airSkateLeft(:, i) = [pod.length/2-(i-1)*skateLength/(numSegments-1), pod.width/2,-pod.height/2];
-    end    
-    skatePoints=[airSkateLeft airSkateRight];                
-       
-    % points for the rail wheels, while not extended
-    wheelGap = .04; %m
-    wheelVert = .05; %m   
-    numWheels = 8;
-    
-    rightRailWheelPoints = zeros(3,numWheels);
-    leftRailWheelPoints = zeros(3,numWheels);
-    for i=1:numWheels
-       rightRailWheelPoints(:,i) = [pod.length/2-(i-.5)*pod.length/numWheels,...
-           -wheelGap/2, wheelVert-pod.height/2];
-       leftRailWheelPoints(:, i) = [pod.length/2-(i-.5)*pod.length/numWheels,...
-            wheelGap/2, wheelVert-pod.height/2];
-    end
-    
-    %%%% for kalman filter %%%%
-    
-    covariance = .001*eye(10);
-    
+    %%%% For Kalman Filter %%%%    
+    covariance = .001*eye(10);    
     % state is a 10x1 matrix of [position velocity quaternions]
     state = [transPos(:,1)' transVel(:,1)' q(:,1)']';
-    
     kalmanHistory = zeros(10,globals.numSteps/kalmanFreq);
+    
+    
+    %%%% THINGS THAT WILL EVENTUALLY BE IN CONTROL %%%%
+    eBrakesActuated = false;
     
     
     disp('Simulation Initialized')
@@ -96,40 +61,51 @@ function [] = HyperloopSimV2()
            %forces already in local
 
            %%%%% AIR SKATES %%%%%
-           skateForces=zeros(3,length(skatePoints));
-           for i=1:length(skatePoints)
-                point= rotMatrix*skatePoints(:,i) + transPos(:,n-1);
-                [~, vertDist]=DistanceFinder(point);
-                
-                pointForce=SkateForce(vertDist,11e3,skateLength);  
-                skateForces(3,i)=pointForce/(2*length(airSkateRight));
-            end
-            localForces=[localForces skateForces];
-            localPoints=[localPoints skatePoints];
-            
+           
+           % for each air skate, calculate the force
+           for i = 1:length(pod.airskate(:,1,1))
+               skateForces = zeros(3,length(pod.airskate(i)));  
+               skatePoints = zeros(3,length(pod.airskate(i)));  
+               for j = 1:length(pod.airskate(i,:,:))
+                  point= rotMatrix*squeeze(pod.airskate(i,j,:)) + transPos(:,n-1); 
+%                   [~, vertDist]=DistanceFinder(point);
+                  vertDist = tube.railHeight + point(3);
+                  pointForce=SkateForce(vertDist,50e3,pod.skateSegmentLength);
+                  skateForces(3,j)= pointForce/length(pod.airskate(i,:,:));
+                  skatePoints(:,j) = squeeze(pod.airskate(i,j,:));
+%                   if (i == 1 && j == 1)
+%                       display(vertDist)
+%                       display(pointForce)
+%                   end
 
+               end
+               localForces=[localForces skateForces];
+               localPoints=[localPoints skatePoints];
+           end
+
+           
             %%%%% SPACEX PUSHER %%%%%
-            if transPos(1,n-1) < globals.pusherDistance
-                localPusherForce = rotMatrix\[globals.pusherForce; 0; 0];
-                localPusherPoint = [-pod.length/2;0;0];
-                
-                localForces=[localForces localPusherForce];
-                localPoints=[localPoints localPusherPoint];
-            end
-            
-            
-            %%%%% DRAG FORCE %%%%%
-            drag = DRAG_COEFFICIENT* AIR_DENSITY*pod.width*pod.height*(transVel(1,n-1))^2 / 2;
-            localDragForce = rotMatrix\[-drag;0;0];
-            localDragPoint= [pod.length/2; 0; 0];
-            
-            localForces=[localForces localDragForce];
-            localPoints=[localPoints localDragPoint];
+%             if transPos(1,n-1) < globals.pusherDistance
+%                 localPusherForce = rotMatrix\[globals.pusherForce; 0; 0];
+%                 localPusherPoint = [-pod.length/2;0;0];
+%                 
+%                 localForces=[localForces localPusherForce];
+%                 localPoints=[localPoints localPusherPoint];
+%             end
+%             
+%             
+%             %%%%% DRAG FORCE %%%%%
+%             drag = DRAG_COEFFICIENT* AIR_DENSITY*pod.width*pod.height*(transVel(1,n-1))^2 / 2;
+%             localDragForce = rotMatrix\[-drag;0;0];
+%             localDragPoint= [pod.length/2; 0; 0];
+%             
+%             localForces=[localForces localDragForce];
+%             localPoints=[localPoints localDragPoint];
             
             %%%GRAVITY FORCE%%
             gravityForce=[0 0 -1*globals.gravity]* pod.mass;
             localGravityForce=rotMatrix\gravityForce';
-            localGravityPoint=[0;0;0];
+            localGravityPoint=pod.COM;
 
             localForces=[localForces localGravityForce];
             localPoints=[localPoints localGravityPoint];
@@ -147,13 +123,18 @@ function [] = HyperloopSimV2()
             localForces=localForces+noise; 
         end
         
+        
+        
         %calculate torques in local
         netTorque=[0 0 0];
            for i=1:length(localPoints)
-              torque=cross(localPoints(:,i),localForces(:,i));
+              torque=cross(localPoints(:,i)-pod.COM,localForces(:,i));
               netTorque=netTorque+torque';
            end
                    
+%         display(netTorque)
+
+        
         %get theta accel by tensor\torque
         rotAcc(:,n) = pod.tensor \ transpose(netTorque);
         
@@ -185,6 +166,10 @@ function [] = HyperloopSimV2()
         netForce=[0 0 0];
         for force=globalForces
             netForce = netForce+force';
+        end
+        
+        if eBrakesActuated
+            netForce = netForce + [-pod.eBrakeForce; 0; 0];
         end
                 
         %get accel, velocity, position
@@ -256,11 +241,13 @@ function [] = HyperloopSimV2()
                 
     end
     
-    display(size(kalmanHistory(3,:)))
-    display(size(transPos(3,:)))
-    plot(kalmanHistory(3,:))
-    hold on
-    plot(downsample(transPos(3,:),kalmanFreq));
-    hold off
-    
+%     display(size(kalmanHistory(3,:)))
+%     display(size(transPos(3,:)))
+%     plot(kalmanHistory(3,:))
+%     hold on
+%     plot(downsample(transPos(3,:),kalmanFreq));
+%     hold off
+
+    plot(transPos(3,:))
+
 end

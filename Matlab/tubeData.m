@@ -11,9 +11,15 @@ classdef tubeData
             4800 4900 5000 5100 5200]*12*0.0254; % m
         stripWidth=2*0.0254;% m
   
-        railHeight
-        topRailWidth
-        midRailWidth
+        tubeCenterHeight = .72 %m
+        
+        railHeight = .127 %m
+        railTopThickness = .0104 %m
+        topRailWidth = .127 %m
+        midRailWidth = .00795 %m 
+        maxBrightness = 1 %who the fuck knows, maybe candelas?
+        tubeCenterToTopOfRail = 0.4 %m
+        angleOfPESensitivity = 10*pi/180 %rad
         
     end
 end
