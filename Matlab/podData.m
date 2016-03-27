@@ -10,7 +10,7 @@ classdef podData
         leftRailWheels
         rightRailWheels
         airskate
-        skateSegmentLength = 1.14
+        skateSegmentLength
         eBrakeForce
     end
     methods
@@ -33,9 +33,12 @@ classdef podData
                         -pod.length/2   pod.width/2   pod.height/2; ...
                         -pod.length/2  -pod.width/2   pod.height/2]';
 
+            pod.skateSegmentLength = 1.14;
                     
             % GENERATE SKATE POINTS
 
+            
+            
             skateCoordinates = [
                 [-3.3917382	-0.3556	-0.113919]'...
                 [-2.16408	-0.3556	-0.113919]'...
@@ -44,15 +47,15 @@ classdef podData
                 [-2.16408	 0.127	-0.113919]'...
                 [-0.9364218	 0.127	-0.113919]'];
 
-            pod.airskate = zeros(6,4*6,3); 
+            pod.airskate = zeros(6,4,3); 
     
             for i = 1:6
                % each segment has 10x46 holes 1" apart - simulate as fewer
                % holes for increases speed
-               segment = zeros(4*6,3);
-               for x = 0:9:45
-                   for y = 0:3:9
-                       segment(x/9*4 + y/3+1,:) = skateCoordinates(:,i) + .0254*[x;y;0];
+               segment = zeros(4,3);
+               for x = 0:45:45
+                   for y = 0:9:9
+                       segment(x/45*2 + y/9+1,:) = skateCoordinates(:,i) + .0254*[x;y;0];
 %                        display(segment(x*10 + y+1,:))
                    end
                    

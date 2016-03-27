@@ -15,7 +15,7 @@ function [] = HyperloopSimV2()
     transPos = zeros(3, globals.numSteps);
     transVel = zeros(3, globals.numSteps);
     transAcc = zeros(3, globals.numSteps);
-    transPos(3,1) = -.01;
+    transPos(3,1) = .003;
 
     rotPos = zeros(3, globals.numSteps);
     rotVel = zeros(3, globals.numSteps);
@@ -209,10 +209,10 @@ function [] = HyperloopSimV2()
             execution =  [1 0 0 0 0 0 0];
 
             IMUData = [transAcc(:,n)' rotVel(:,n)']';
-            IMUData = IMUData + [0 0 9.81 0 0 0]';
+            IMUData = IMUData + [0 0 globals.gravity 0 0 0]';
 
             % add random noise
-            IMUData = IMUData + (.001*(rand(1)-.5)).*IMUData;
+            IMUData = IMUData + (.01*(rand(1)-.5)).*IMUData;
             sensorData = (1 + .01*(rand(1)-.5)).*sensorData;
 
             [state, covariance] = KalmanFilterHyperloop(state, covariance, IMUData, sensorData, execution);
@@ -241,13 +241,12 @@ function [] = HyperloopSimV2()
                 
     end
     
-%     display(size(kalmanHistory(3,:)))
-%     display(size(transPos(3,:)))
-%     plot(kalmanHistory(3,:))
-%     hold on
-%     plot(downsample(transPos(3,:),kalmanFreq));
-%     hold off
+    display(size(kalmanHistory(3,:)))
+    display(size(transPos(3,:)))
+    plot(kalmanHistory(3,:))
+    hold on
+    plot(downsample(transPos(3,:),kalmanFreq));
+    hold off
 
-    plot(transPos(3,:))
 
 end

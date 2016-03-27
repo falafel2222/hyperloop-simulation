@@ -13,7 +13,8 @@ classdef tubeData
   
         tubeCenterHeight = .72 %m
         
-        railHeight = .127 %m
+        % rail height is total height minus height of the track
+        railHeight = .127 - .0127 %m
         railTopThickness = .0104 %m
         topRailWidth = .127 %m
         midRailWidth = .00795 %m 
