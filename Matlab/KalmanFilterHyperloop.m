@@ -391,10 +391,10 @@ end
 
 % CORRECTIVE STEP 5, 12 o'clock Photoelectric
 if execution(5)==1
-    
+    % getting sensor data
     z5kp1 = sensorData(5,:);
     
-    
+    % Getting terms from the previous state prediction to use in calculation
     rx5=x4kp1kp1(1);
     ry5=x4kp1kp1(2);
     rz5=x4kp1kp1(3);
@@ -402,6 +402,7 @@ if execution(5)==1
     q52=x4kp1kp1(8);
     q53=x4kp1kp1(9);
     q50=x4kp1kp1(10);
+    %Calculating the rotation matrix
     Rot5=[1-2*q52^2-2*q53^2 2*(q51*q52-q50*q53) 2*(q51*q53+q50*q52);...
      2*(q51*q52+q50*q53) 1-2*q51^2-2*q53^2 2*(q52*q53-q50*q51);...
      2*(q51*q53-q50*q52) 2*(q52*q53+q50*q51) 1-2*q51^2-2*q52^2;];
@@ -409,7 +410,7 @@ if execution(5)==1
     sy5=(Rot5(2,:)*p5 + ry5);
     sz5=(Rot5(3,:)*p5 + rz5);
     
-    
+    %derivatives of the rotation matrix w.r.t. each quaternion to be used to calculate the jacobian
     dRot5dq1=[0 2*q52 2*q53;...
      2*q52 -4*q51 -2*q50;...
      2*q53 2*q50 -4*q51;];
@@ -425,37 +426,38 @@ if execution(5)==1
     dRot5dq0=[0 -2*q53 2*q52;...
      2*q53 0 -2*q51;...
      -2*q52 2*q51 0;];
- 
+     
+    %mostly intermediate terms which are used over and over again so its easier to define them
     g5=(((sz5-tubeCenterToTopOfRail)*Rot5(3,:))+(sy5*Rot5(2,:)));
     dg5dq1 = (sz5-tubeCenterToTopOfRail)*dRot5dq1(3,:) + (dRot5dq1(3,:)*p5)*Rot5(3,:) + sy5*dRot5dq1(2,:) + (dRot5dq1(2,:)*p5)*Rot5(2,:);
     dg5dq2 = (sz5-tubeCenterToTopOfRail)*dRot5dq2(3,:) + (dRot5dq2(3,:)*p5)*Rot5(3,:) + sy5*dRot5dq2(2,:) + (dRot5dq2(2,:)*p5)*Rot5(2,:);
     dg5dq3 = (sz5-tubeCenterToTopOfRail)*dRot5dq3(3,:) + (dRot5dq3(3,:)*p5)*Rot5(3,:) + sy5*dRot5dq3(2,:) + (dRot5dq3(2,:)*p5)*Rot5(2,:);
     dg5dq0 = (sz5-tubeCenterToTopOfRail)*dRot5dq0(3,:) + (dRot5dq0(3,:)*p5)*Rot5(3,:) + sy5*dRot5dq0(2,:) + (dRot5dq0(2,:)*p5)*Rot5(2,:);
-    
+    %more intermediate terms and their partial derivative terms
     m5=((dot(Rot5(2,:),b5))^2+(dot(Rot5(3,:),b5))^2);
     dm5dq1 = 2*dot(b5,((dot(b5,Rot5(2,:)))*dRot5dq1(2,:) + (dot(b5,Rot5(3,:)))*dRot5dq1(3,:)));
     dm5dq2 = 2*dot(b5,((dot(b5,Rot5(2,:)))*dRot5dq2(2,:) + (dot(b5,Rot5(3,:)))*dRot5dq2(3,:)));
     dm5dq3 = 2*dot(b5,((dot(b5,Rot5(2,:)))*dRot5dq3(2,:) + (dot(b5,Rot5(3,:)))*dRot5dq3(3,:)));
     dm5dq0 = 2*dot(b5,((dot(b5,Rot5(2,:)))*dRot5dq0(2,:) + (dot(b5,Rot5(3,:)))*dRot5dq0(3,:)));
  
-    tau5 = ((-dot(g5,b5))+sqrt((dot(g5,b5))^2-(m5*((sz5-tubeCenterToTopOfRail)^2-tube.radius^2+sy5^2))))/m5;
-    
+    tau5 = ((-dot(g5,b5))+sqrt((dot(g5,b5))^2-(m5*((sz5-tubeCenterToTopOfRail)^2-tubeRadius^2+sy5^2))))/m5;
+    %partial derivative of tau w.r.t. the position
     dtau5drx = 0;
-    dtau5dry = (-dot(Rot5(2,:),b5) + ((dot(g5,b5))*(dot(b5,Rot5(2,:)))-m5*sy5)/sqrt((dot(g5,b5))^2-m5*((sz5-tubeCenterToTopOfRail)^2-tube.radius^2+sy5^2)))/m5;
-    dtau5drz = (-dot(Rot5(3,:),b5) + ((dot(g5,b5))*(dot(b5,Rot5(3,:)))-m5*(sz5-tubeCenterToTopOfRail))/sqrt((dot(g5,b5))^2-m5*((sz5-tubeCenterToTopOfRail)^2-tube.radius^2+sy5^2)))/m5;
-    
-    dtau5dq1=m5*(-dot(b5, ((dot(p5,dRot5dq1(3,:))*Rot5(3,:) +(sz5-tubeCenterToTopOfRail)*dRot5dq1(3,:)+(dot(p5,dRot5dq1(2,:)))*Rot5(2,:)+sy5*dRot5dq1(2,:))) + (2*dot(g5,b5)*dot(dg5dq1,b5)-(2*m5*(sz5-tubeCenterToTopOfRail)*(dRot5dq1(3,:)*p5) + ((sz5-tubeCenterToTopOfRail)^2-tube.radius^2+sy5^2))*dm5dq1))/(2*sqrt((dot(g5,b5))^2-m5*((sz5-tubeCenterToTopOfRail)^2-tube.radius^2+sy5^2))))-((-(dot(g5,b5))+sqrt((dot(g5,b5))^2-m5*((sz5-tubeCenterToTopOfRail)^2-tube.radius^2+sy5^2)))*dm5dq1)/(m5^2);
-    dtau5dq2=m5*(-dot(b5, ((dot(p5,dRot5dq2(3,:))*Rot5(3,:) +(sz5-tubeCenterToTopOfRail)*dRot5dq2(3,:)+(dot(p5,dRot5dq2(2,:)))*Rot5(2,:)+sy5*dRot5dq2(2,:))) + (2*dot(g5,b5)*dot(dg5dq2,b5)-(2*m5*(sz5-tubeCenterToTopOfRail)*(dRot5dq2(3,:)*p5) + ((sz5-tubeCenterToTopOfRail)^2-tube.radius^2+sy5^2))*dm5dq2))/(2*sqrt((dot(g5,b5))^2-m5*((sz5-tubeCenterToTopOfRail)^2-tube.radius^2+sy5^2))))-((-(dot(g5,b5))+sqrt((dot(g5,b5))^2-m5*((sz5-tubeCenterToTopOfRail)^2-tube.radius^2+sy5^2)))*dm5dq2)/(m5^2);
-    dtau5dq3=m5*(-dot(b5, ((dot(p5,dRot5dq3(3,:))*Rot5(3,:) +(sz5-tubeCenterToTopOfRail)*dRot5dq3(3,:)+(dot(p5,dRot5dq3(2,:)))*Rot5(2,:)+sy5*dRot5dq3(2,:))) + (2*dot(g5,b5)*dot(dg5dq3,b5)-(2*m5*(sz5-tubeCenterToTopOfRail)*(dRot5dq3(3,:)*p5) + ((sz5-tubeCenterToTopOfRail)^2-tube.radius^2+sy5^2))*dm5dq3))/(2*sqrt((dot(g5,b5))^2-m5*((sz5-tubeCenterToTopOfRail)^2-tube.radius^2+sy5^2))))-((-(dot(g5,b5))+sqrt((dot(g5,b5))^2-m5*((sz5-tubeCenterToTopOfRail)^2-tube.radius^2+sy5^2)))*dm5dq3)/(m5^2);
-    dtau5dq0=m5*(-dot(b5, ((dot(p5,dRot5dq0(3,:))*Rot5(3,:) +(sz5-tubeCenterToTopOfRail)*dRot5dq0(3,:)+(dot(p5,dRot5dq0(2,:)))*Rot5(2,:)+sy5*dRot5dq0(2,:))) + (2*dot(g5,b5)*dot(dg5dq0,b5)-(2*m5*(sz5-tubeCenterToTopOfRail)*(dRot5dq0(3,:)*p5) + ((sz5-tubeCenterToTopOfRail)^2-tube.radius^2+sy5^2))*dm5dq0))/(2*sqrt((dot(g5,b5))^2-m5*((sz5-tubeCenterToTopOfRail)^2-tube.radius^2+sy5^2))))-((-(dot(g5,b5))+sqrt((dot(g5,b5))^2-m5*((sz5-tubeCenterToTopOfRail)^2-tube.radius^2+sy5^2)))*dm5dq0)/(m5^2);
+    dtau5dry = (-dot(Rot5(2,:),b5) + ((dot(g5,b5))*(dot(b5,Rot5(2,:)))-m5*sy5)/sqrt((dot(g5,b5))^2-m5*((sz5-tubeCenterToTopOfRail)^2-tubeRadius^2+sy5^2)))/m5;
+    dtau5drz = (-dot(Rot5(3,:),b5) + ((dot(g5,b5))*(dot(b5,Rot5(3,:)))-m5*(sz5-tubeCenterToTopOfRail))/sqrt((dot(g5,b5))^2-m5*((sz5-tubeCenterToTopOfRail)^2-tubeRadius^2+sy5^2)))/m5;
+    %partial derivative of tau w.r.t. the quaternions
+    dtau5dq1=m5*(-dot(b5, ((dot(p5,dRot5dq1(3,:))*Rot5(3,:) +(sz5-tubeCenterToTopOfRail)*dRot5dq1(3,:)+(dot(p5,dRot5dq1(2,:)))*Rot5(2,:)+sy5*dRot5dq1(2,:))) + (2*dot(g5,b5)*dot(dg5dq1,b5)-(2*m5*(sz5-tubeCenterToTopOfRail)*(dRot5dq1(3,:)*p5) + ((sz5-tubeCenterToTopOfRail)^2-tubeRadius^2+sy5^2))*dm5dq1))/(2*sqrt((dot(g5,b5))^2-m5*((sz5-tubeCenterToTopOfRail)^2-tubeRadius^2+sy5^2))))-((-(dot(g5,b5))+sqrt((dot(g5,b5))^2-m5*((sz5-tubeCenterToTopOfRail)^2-tubeRadius^2+sy5^2)))*dm5dq1)/(m5^2);
+    dtau5dq2=m5*(-dot(b5, ((dot(p5,dRot5dq2(3,:))*Rot5(3,:) +(sz5-tubeCenterToTopOfRail)*dRot5dq2(3,:)+(dot(p5,dRot5dq2(2,:)))*Rot5(2,:)+sy5*dRot5dq2(2,:))) + (2*dot(g5,b5)*dot(dg5dq2,b5)-(2*m5*(sz5-tubeCenterToTopOfRail)*(dRot5dq2(3,:)*p5) + ((sz5-tubeCenterToTopOfRail)^2-tubeRadius^2+sy5^2))*dm5dq2))/(2*sqrt((dot(g5,b5))^2-m5*((sz5-tubeCenterToTopOfRail)^2-tubeRadius^2+sy5^2))))-((-(dot(g5,b5))+sqrt((dot(g5,b5))^2-m5*((sz5-tubeCenterToTopOfRail)^2-tubeRadius^2+sy5^2)))*dm5dq2)/(m5^2);
+    dtau5dq3=m5*(-dot(b5, ((dot(p5,dRot5dq3(3,:))*Rot5(3,:) +(sz5-tubeCenterToTopOfRail)*dRot5dq3(3,:)+(dot(p5,dRot5dq3(2,:)))*Rot5(2,:)+sy5*dRot5dq3(2,:))) + (2*dot(g5,b5)*dot(dg5dq3,b5)-(2*m5*(sz5-tubeCenterToTopOfRail)*(dRot5dq3(3,:)*p5) + ((sz5-tubeCenterToTopOfRail)^2-tubeRadius^2+sy5^2))*dm5dq3))/(2*sqrt((dot(g5,b5))^2-m5*((sz5-tubeCenterToTopOfRail)^2-tubeRadius^2+sy5^2))))-((-(dot(g5,b5))+sqrt((dot(g5,b5))^2-m5*((sz5-tubeCenterToTopOfRail)^2-tubeRadius^2+sy5^2)))*dm5dq3)/(m5^2);
+    dtau5dq0=m5*(-dot(b5, ((dot(p5,dRot5dq0(3,:))*Rot5(3,:) +(sz5-tubeCenterToTopOfRail)*dRot5dq0(3,:)+(dot(p5,dRot5dq0(2,:)))*Rot5(2,:)+sy5*dRot5dq0(2,:))) + (2*dot(g5,b5)*dot(dg5dq0,b5)-(2*m5*(sz5-tubeCenterToTopOfRail)*(dRot5dq0(3,:)*p5) + ((sz5-tubeCenterToTopOfRail)^2-tubeRadius^2+sy5^2))*dm5dq0))/(2*sqrt((dot(g5,b5))^2-m5*((sz5-tubeCenterToTopOfRail)^2-tubeRadius^2+sy5^2))))-((-(dot(g5,b5))+sqrt((dot(g5,b5))^2-m5*((sz5-tubeCenterToTopOfRail)^2-tubeRadius^2+sy5^2)))*dm5dq0)/(m5^2);
    
  
     alpha5=sx5+dot(Rot5(1,:),b5*tau5);
-    
+    %partial derivative of alpha w.r.t. the quaternions
     dalpha5drx = 1+dot(Rot5(1,:),b5*dtau5drx);
     dalpha5dry = dot(Rot5(1,:),b5*dtau5dry);
     dalpha5drz = dot(Rot5(1,:),b5*dtau5dry);
-   
+    %partial derivative of alpha w.r.t. the quaternions
     dalpha5dq1 = dRot5dq1(1,:)*p5 + dot(Rot5(1,:),b5*dtau5dq1) + dot(dRot5dq1(1,:),b5*tau5);
     dalpha5dq2 = dRot5dq2(1,:)*p5 + dot(Rot5(1,:),b5*dtau5dq2) + dot(dRot5dq2(1,:),b5*tau5);
     dalpha5dq3 = dRot5dq3(1,:)*p5 + dot(Rot5(1,:),b5*dtau5dq3) + dot(dRot5dq3(1,:),b5*tau5);
@@ -464,31 +466,31 @@ if execution(5)==1
     dist5=dot((Rot5*b5),tau5);
     
     bx5=dot(Rot5(1,:),(b5/norm(b5)));
-    
+    %partial derivative of b w.r.t. the position
     dbx5drx=0;
     dbx5dry=0;
     dbx5drz=0;
-    
+    %partial derivative of b w.r.t. the quaternions
     dbx5dq1=dot(dRot5dq1(1,:),(b5/norm(b5)));
     dbx5dq2=dot(dRot5dq2(1,:),(b5/norm(b5)));
     dbx5dq3=dot(dRot5dq3(1,:),(b5/norm(b5)));
     dbx5dq0=dot(dRot5dq0(1,:),(b5/norm(b5)));
     
     detectionRad5=dist5*sin(angleOfPESensitivity/2);
-    
+    %partial derivative of detection radius w.r.t. the position
     ddetRad5drx=sin(angleOfPESensitivity/2)*(dot((dRot5drx*b5),tau5)+dot(dtau5drx,(Rot5*b5)));
     ddetRad5dry=sin(angleOfPESensitivity/2)*(dot((dRot5dry*b5),tau5)+dot(dtau5dry,(Rot5*b5)));
     ddetRad5drz=sin(angleOfPESensitivity/2)*(dot((dRot5drz*b5),tau5)+dot(dtau5drz,(Rot5*b5)));
-    
+    %partial derivative of detection radius w.r.t. the quaternions
     ddetRad5dq1=sin(angleOfPESensitivity/2)*(dot((dRot5dq1*b5),tau5)+dot(dtau5dq1,(Rot5*b5)));
     ddetRad5dq2=sin(angleOfPESensitivity/2)*(dot((dRot5dq2*b5),tau5)+dot(dtau5dq2,(Rot5*b5)));
     ddetRad5dq3=sin(angleOfPESensitivity/2)*(dot((dRot5dq3*b5),tau5)+dot(dtau5dq3,(Rot5*b5)));
     ddetRad5dq0=sin(angleOfPESensitivity/2)*(dot((dRot5dq4*b5),tau5)+dot(dtau5dq4,(Rot5*b5)));
     
-    stripLeadingEdgeDistance=alpha5-tube.stripDistances-stripThickness/2;
-    stripTrailingEdgeDistance=alpha5-tube.stripDistances+stripThickness/2;
+    stripLeadingEdgeDistance=alpha5-stripDistances-stripThickness/2;
+    stripTrailingEdgeDistance=alpha5-stripDistances+stripThickness/2;
        
-    
+    %Finally calculating the actual terms for the Jacobian
     df5drx=(maxBrightness./stripThickness).*sum(((stripTrailingEdgeDistance>(-detectionRad5)./bx5)- (stripLeadingEdgeDistance>(-detectionRad5)./bx5).*(dalpha5drx+(bx5*ddetRad5drx-detectionRad5*dbx5drx)/(bx5^2)) - ((stripTrailingEdgeDistance>(detectionRad5)./bx5)-(stripLeadingEdgeDistance>(detectionRad5)./bx5)).*(dalpha5drx-(bx5*ddetRad5drx-detectionRad5*dbx5drx)/(bx5^2))));
     df5dry=(maxBrightness./stripThickness).*sum(((stripTrailingEdgeDistance>(-detectionRad5)./bx5)- (stripLeadingEdgeDistance>(-detectionRad5)./bx5).*(dalpha5dry+(bx5*ddetRad5dry-detectionRad5*dbx5dry)/(bx5^2)) - ((stripTrailingEdgeDistance>(detectionRad5)./bx5)-(stripLeadingEdgeDistance>(detectionRad5)./bx5)).*(dalpha5dry-(bx5*ddetRad5dry-detectionRad5*dbx5dry)/(bx5^2))));
     df5drz=(maxBrightness./stripThickness).*sum(((stripTrailingEdgeDistance>(-detectionRad5)./bx5)- (stripLeadingEdgeDistance>(-detectionRad5)./bx5).*(dalpha5drz+(bx5*ddetRad5drz-detectionRad5*dbx5drz)/(bx5^2)) - ((stripTrailingEdgeDistance>(detectionRad5)./bx5)-(stripLeadingEdgeDistance>(detectionRad5)./bx5)).*(dalpha5drz-(bx5*ddetRad5drz-detectionRad5*dbx5drz)/(bx5^2))));
@@ -501,16 +503,17 @@ if execution(5)==1
     
     H5kp1=[df5drx df5dry df5drz 0 0 0 df5dq1 df5dq2 df5dq3 df5dq0];
     S5kp1=VerticalPECovariance; %Experimentally determined
-    K5kp1=P4kp1kp1*H5kp1'/(H5kp1*P4kp1kp1*H5kp1'+S5kp1);
+    K5kp1=P4kp1kp1*H5kp1'/(H5kp1*P4kp1kp1*H5kp1'+S5kp1); %Kalman Gain
 
     
     h5kp1=(maxBrightness./stripThickness).*sum((stripTrailingEdgeDistance>(-detectionRad5)./bx5).*(stripTrailingEdgeDistance+detectionRad5./bx5) - (stripLeadingEdgeDistance>(-detectionRad5)./bx5).*(stripLeadingEdgeDistance+detectionRad5./bx5) - (stripTrailingEdgeDistance>(detectionRad5)./bx5).*(stripTrailingEdgeDistance-detectionRad5./bx5) + (stripLeadingEdgeDistance>(detectionRad5)./bx5).*(stripLeadingEdgeDistance-detectionRad5./bx5));
-        
+    % The next step compares the data from the sensors with the predicted state and alters
+    %the state prediction by a factor determined by the Kalman Gain
     x5kp1kp1=x4kp1kp1+K5kp1*(z5kp1-h5kp1);
     P5kp1kp1=(eye(10,10)-K5kp1*H5kp1)*P4kp1kp1;
     
-    normQuat5=sqrt(sum((x4kp1kp1(7:10)).^2));
-    x5kp1kp1(7:10)=x4kp1kp1(7:10)./normQuat5;
+    normQuat5=sqrt(sum((x5kp1kp1(7:10)).^2));
+    x5kp1kp1(7:10)=x5kp1kp1(7:10)./normQuat5;
 else
     x5kp1kp1=x4kp1kp1;
     P5kp1kp1=P4kp1kp1;
@@ -521,25 +524,26 @@ end
 
 % CORRECTIVE STEP 6, 10:30 Photoelectric
 if execution(6)==1
-    
+    % getting sensor data
     z6kp1 = sensorData(6,:);
     
-    
+    % Getting terms from the previous state prediction to use in calculations
     rx6=x5kp1kp1(1);
-    ry5=x5kp1kp1(2);
-    rz5=x5kp1kp1(3);
+    ry6=x5kp1kp1(2);
+    rz6=x5kp1kp1(3);
     q61=x5kp1kp1(7);  
     q62=x5kp1kp1(8);
     q63=x5kp1kp1(9);
     q60=x5kp1kp1(10);
+    %Calculating the rotation matrix
     Rot6=[1-2*q62^2-2*q63^2 2*(q61*q62-q60*q63) 2*(q61*q63+q60*q62);...
      2*(q61*q62+q60*q63) 1-2*q61^2-2*q63^2 2*(q62*q63-q60*q61);...
      2*(q61*q63-q60*q62) 2*(q62*q63+q60*q61) 1-2*q61^2-2*q62^2;];
-    sx6=(Rot6(1,:)*p6 + rx5);
-    sy6=(Rot6(2,:)*p6 + ry5);
-    sz6=(Rot6(3,:)*p6 + rz5);
+    sx6=(Rot6(1,:)*p6 + rx6);
+    sy6=(Rot6(2,:)*p6 + ry6);
+    sz6=(Rot6(3,:)*p6 + rz6);
     
-    
+    %derivatives of the rotation matrix w.r.t. each quaternion to be used to calculate the jacobian
     dRot6dq1=[0 2*q62 2*q63;...
      2*q62 -4*q61 -2*q60;...
      2*q63 2*q60 -4*q61;];
@@ -555,31 +559,32 @@ if execution(6)==1
     dRot6dq0=[0 -2*q63 2*q62;...
      2*q63 0 -2*q61;...
      -2*q62 2*q61 0;];
- 
+    %intermediate terms and their partial derivative terms
     g6=(((sz6-tubeCenterToTopOfRail)*Rot6(3,:))+(sy6*Rot6(2,:)));
     dg6dq1 = (sz6-tubeCenterToTopOfRail)*dRot6dq1(3,:) + (dRot6dq1(3,:)*p6)*Rot6(3,:) + sy6*dRot6dq1(2,:) + (dRot6dq1(2,:)*p6)*Rot6(2,:);
     dg6dq2 = (sz6-tubeCenterToTopOfRail)*dRot6dq2(3,:) + (dRot6dq2(3,:)*p6)*Rot6(3,:) + sy6*dRot6dq2(2,:) + (dRot6dq2(2,:)*p6)*Rot6(2,:);
     dg6dq3 = (sz6-tubeCenterToTopOfRail)*dRot6dq3(3,:) + (dRot6dq3(3,:)*p6)*Rot6(3,:) + sy6*dRot6dq3(2,:) + (dRot6dq3(2,:)*p6)*Rot6(2,:);
     dg6dq0 = (sz6-tubeCenterToTopOfRail)*dRot6dq0(3,:) + (dRot6dq0(3,:)*p6)*Rot6(3,:) + sy6*dRot6dq0(2,:) + (dRot6dq0(2,:)*p6)*Rot6(2,:);
-    
+    %more intermediate terms and their partial derivative terms
     m6=((dot(Rot6(2,:),b6))^2+(dot(Rot6(3,:),b6))^2);
     dm6dq1 = 2*dot(b6,((dot(b6,Rot6(2,:)))*dRot6dq1(2,:) + (dot(b6,Rot6(3,:)))*dRot6dq1(3,:)));
     dm6dq2 = 2*dot(b6,((dot(b6,Rot6(2,:)))*dRot6dq2(2,:) + (dot(b6,Rot6(3,:)))*dRot6dq2(3,:)));
     dm6dq3 = 2*dot(b6,((dot(b6,Rot6(2,:)))*dRot6dq3(2,:) + (dot(b6,Rot6(3,:)))*dRot6dq3(3,:)));
     dm6dq0 = 2*dot(b6,((dot(b6,Rot6(2,:)))*dRot6dq0(2,:) + (dot(b6,Rot6(3,:)))*dRot6dq0(3,:)));
  
-    tau6 = ((-dot(g6,b6))+sqrt((dot(g6,b6))^2-(m6*((sz6-tubeCenterToTopOfRail)^2-tube.radius^2+sy6^2))))/m6;
+    %more intermediate terms and their partial derivative terms
+    tau6 = ((-dot(g6,b6))+sqrt((dot(g6,b6))^2-(m6*((sz6-tubeCenterToTopOfRail)^2-tubeRadius^2+sy6^2))))/m6;
     
     dtau6drx = 0;
-    dtau6dry = (-dot(Rot6(2,:),b6) + ((dot(g6,b6))*(dot(b6,Rot6(2,:)))-m6*sy6)/sqrt((dot(g6,b6))^2-m6*((sz6-tubeCenterToTopOfRail)^2-tube.radius^2+sy6^2)))/m6;
-    dtau6drz = (-dot(Rot6(3,:),b6) + ((dot(g6,b6))*(dot(b6,Rot6(3,:)))-m6*(sz6-tubeCenterToTopOfRail))/sqrt((dot(g6,b6))^2-m6*((sz6-tubeCenterToTopOfRail)^2-tube.radius^2+sy6^2)))/m6;
+    dtau6dry = (-dot(Rot6(2,:),b6) + ((dot(g6,b6))*(dot(b6,Rot6(2,:)))-m6*sy6)/sqrt((dot(g6,b6))^2-m6*((sz6-tubeCenterToTopOfRail)^2-tubeRadius^2+sy6^2)))/m6;
+    dtau6drz = (-dot(Rot6(3,:),b6) + ((dot(g6,b6))*(dot(b6,Rot6(3,:)))-m6*(sz6-tubeCenterToTopOfRail))/sqrt((dot(g6,b6))^2-m6*((sz6-tubeCenterToTopOfRail)^2-tubeRadius^2+sy6^2)))/m6;
     
-    dtau6dq1=m6*(-dot(b6, ((dot(p6,dRot6dq1(3,:))*Rot6(3,:) +(sz6-tubeCenterToTopOfRail)*dRot6dq1(3,:)+(dot(p6,dRot6dq1(2,:)))*Rot6(2,:)+sy6*dRot6dq1(2,:))) + (2*dot(g6,b6)*dot(dg6dq1,b6)-(2*m6*(sz6-tubeCenterToTopOfRail)*(dRot6dq1(3,:)*p6) + ((sz6-tubeCenterToTopOfRail)^2-tube.radius^2+sy6^2))*dm6dq1))/(2*sqrt((dot(g6,b6))^2-m6*((sz6-tubeCenterToTopOfRail)^2-tube.radius^2+sy6^2))))-((-(dot(g6,b6))+sqrt((dot(g6,b6))^2-m6*((sz6-tubeCenterToTopOfRail)^2-tube.radius^2+sy6^2)))*dm6dq1)/(m6^2);
-    dtau6dq2=m6*(-dot(b6, ((dot(p6,dRot6dq2(3,:))*Rot6(3,:) +(sz6-tubeCenterToTopOfRail)*dRot6dq2(3,:)+(dot(p6,dRot6dq2(2,:)))*Rot6(2,:)+sy6*dRot6dq2(2,:))) + (2*dot(g6,b6)*dot(dg6dq2,b6)-(2*m6*(sz6-tubeCenterToTopOfRail)*(dRot6dq2(3,:)*p6) + ((sz6-tubeCenterToTopOfRail)^2-tube.radius^2+sy6^2))*dm6dq2))/(2*sqrt((dot(g6,b6))^2-m6*((sz6-tubeCenterToTopOfRail)^2-tube.radius^2+sy6^2))))-((-(dot(g6,b6))+sqrt((dot(g6,b6))^2-m6*((sz6-tubeCenterToTopOfRail)^2-tube.radius^2+sy6^2)))*dm6dq2)/(m6^2);
-    dtau6dq3=m6*(-dot(b6, ((dot(p6,dRot6dq3(3,:))*Rot6(3,:) +(sz6-tubeCenterToTopOfRail)*dRot6dq3(3,:)+(dot(p6,dRot6dq3(2,:)))*Rot6(2,:)+sy6*dRot6dq3(2,:))) + (2*dot(g6,b6)*dot(dg6dq3,b6)-(2*m6*(sz6-tubeCenterToTopOfRail)*(dRot6dq3(3,:)*p6) + ((sz6-tubeCenterToTopOfRail)^2-tube.radius^2+sy6^2))*dm6dq3))/(2*sqrt((dot(g6,b6))^2-m6*((sz6-tubeCenterToTopOfRail)^2-tube.radius^2+sy6^2))))-((-(dot(g6,b6))+sqrt((dot(g6,b6))^2-m6*((sz6-tubeCenterToTopOfRail)^2-tube.radius^2+sy6^2)))*dm6dq3)/(m6^2);
-    dtau6dq0=m6*(-dot(b6, ((dot(p6,dRot6dq0(3,:))*Rot6(3,:) +(sz6-tubeCenterToTopOfRail)*dRot6dq0(3,:)+(dot(p6,dRot6dq0(2,:)))*Rot6(2,:)+sy6*dRot6dq0(2,:))) + (2*dot(g6,b6)*dot(dg6dq0,b6)-(2*m6*(sz6-tubeCenterToTopOfRail)*(dRot6dq0(3,:)*p6) + ((sz6-tubeCenterToTopOfRail)^2-tube.radius^2+sy6^2))*dm6dq0))/(2*sqrt((dot(g6,b6))^2-m6*((sz6-tubeCenterToTopOfRail)^2-tube.radius^2+sy6^2))))-((-(dot(g6,b6))+sqrt((dot(g6,b6))^2-m6*((sz6-tubeCenterToTopOfRail)^2-tube.radius^2+sy6^2)))*dm6dq0)/(m6^2);
+    dtau6dq1=m6*(-dot(b6, ((dot(p6,dRot6dq1(3,:))*Rot6(3,:) +(sz6-tubeCenterToTopOfRail)*dRot6dq1(3,:)+(dot(p6,dRot6dq1(2,:)))*Rot6(2,:)+sy6*dRot6dq1(2,:))) + (2*dot(g6,b6)*dot(dg6dq1,b6)-(2*m6*(sz6-tubeCenterToTopOfRail)*(dRot6dq1(3,:)*p6) + ((sz6-tubeCenterToTopOfRail)^2-tubeRadius^2+sy6^2))*dm6dq1))/(2*sqrt((dot(g6,b6))^2-m6*((sz6-tubeCenterToTopOfRail)^2-tubeRadius^2+sy6^2))))-((-(dot(g6,b6))+sqrt((dot(g6,b6))^2-m6*((sz6-tubeCenterToTopOfRail)^2-tubeRadius^2+sy6^2)))*dm6dq1)/(m6^2);
+    dtau6dq2=m6*(-dot(b6, ((dot(p6,dRot6dq2(3,:))*Rot6(3,:) +(sz6-tubeCenterToTopOfRail)*dRot6dq2(3,:)+(dot(p6,dRot6dq2(2,:)))*Rot6(2,:)+sy6*dRot6dq2(2,:))) + (2*dot(g6,b6)*dot(dg6dq2,b6)-(2*m6*(sz6-tubeCenterToTopOfRail)*(dRot6dq2(3,:)*p6) + ((sz6-tubeCenterToTopOfRail)^2-tubeRadius^2+sy6^2))*dm6dq2))/(2*sqrt((dot(g6,b6))^2-m6*((sz6-tubeCenterToTopOfRail)^2-tubeRadius^2+sy6^2))))-((-(dot(g6,b6))+sqrt((dot(g6,b6))^2-m6*((sz6-tubeCenterToTopOfRail)^2-tubeRadius^2+sy6^2)))*dm6dq2)/(m6^2);
+    dtau6dq3=m6*(-dot(b6, ((dot(p6,dRot6dq3(3,:))*Rot6(3,:) +(sz6-tubeCenterToTopOfRail)*dRot6dq3(3,:)+(dot(p6,dRot6dq3(2,:)))*Rot6(2,:)+sy6*dRot6dq3(2,:))) + (2*dot(g6,b6)*dot(dg6dq3,b6)-(2*m6*(sz6-tubeCenterToTopOfRail)*(dRot6dq3(3,:)*p6) + ((sz6-tubeCenterToTopOfRail)^2-tubeRadius^2+sy6^2))*dm6dq3))/(2*sqrt((dot(g6,b6))^2-m6*((sz6-tubeCenterToTopOfRail)^2-tubeRadius^2+sy6^2))))-((-(dot(g6,b6))+sqrt((dot(g6,b6))^2-m6*((sz6-tubeCenterToTopOfRail)^2-tubeRadius^2+sy6^2)))*dm6dq3)/(m6^2);
+    dtau6dq0=m6*(-dot(b6, ((dot(p6,dRot6dq0(3,:))*Rot6(3,:) +(sz6-tubeCenterToTopOfRail)*dRot6dq0(3,:)+(dot(p6,dRot6dq0(2,:)))*Rot6(2,:)+sy6*dRot6dq0(2,:))) + (2*dot(g6,b6)*dot(dg6dq0,b6)-(2*m6*(sz6-tubeCenterToTopOfRail)*(dRot6dq0(3,:)*p6) + ((sz6-tubeCenterToTopOfRail)^2-tubeRadius^2+sy6^2))*dm6dq0))/(2*sqrt((dot(g6,b6))^2-m6*((sz6-tubeCenterToTopOfRail)^2-tubeRadius^2+sy6^2))))-((-(dot(g6,b6))+sqrt((dot(g6,b6))^2-m6*((sz6-tubeCenterToTopOfRail)^2-tubeRadius^2+sy6^2)))*dm6dq0)/(m6^2);
    
- 
+    %more intermediate terms and their partial derivative terms
     alpha6=sx6+dot(Rot6(1,:),b6*tau6);
     
     dalpha6drx = 1+dot(Rot6(1,:),b6*dtau6drx);
@@ -592,7 +597,7 @@ if execution(6)==1
     dalpha6dq0 = dRot6dq0(1,:)*p6 + dot(Rot6(1,:),b6*dtau6dq0) + dot(dRot6dq0(1,:),b6*tau6);
     
     dist6=dot((Rot6*b6),tau6);
-    
+    %more intermediate terms and their partial derivative terms
     bx6=dot(Rot6(1,:),(b6/norm(b6)));
     
     dbx6drx=0;
@@ -605,20 +610,20 @@ if execution(6)==1
     dbx6dq0=dot(dRot6dq0(1,:),(b6/norm(b6)));
     
     detectionRad6=dist6*sin(angleOfPESensitivity/2);
-    
+    %partial derivative of detection radius w.r.t. the position
     ddetRad6drx=sin(angleOfPESensitivity/2)*(dot((dRot6drx*b6),tau6)+dot(dtau6drx,(Rot6*b6)));
     ddetRad6dry=sin(angleOfPESensitivity/2)*(dot((dRot6dry*b6),tau6)+dot(dtau6dry,(Rot6*b6)));
     ddetRad6drz=sin(angleOfPESensitivity/2)*(dot((dRot6drz*b6),tau6)+dot(dtau6drz,(Rot6*b6)));
-    
+    %partial derivative of detection radius w.r.t. the quaternions
     ddetRad6dq1=sin(angleOfPESensitivity/2)*(dot((dRot6dq1*b6),tau6)+dot(dtau6dq1,(Rot6*b6)));
     ddetRad6dq2=sin(angleOfPESensitivity/2)*(dot((dRot6dq2*b6),tau6)+dot(dtau6dq2,(Rot6*b6)));
     ddetRad6dq3=sin(angleOfPESensitivity/2)*(dot((dRot6dq3*b6),tau6)+dot(dtau6dq3,(Rot6*b6)));
     ddetRad6dq0=sin(angleOfPESensitivity/2)*(dot((dRot6dq4*b6),tau6)+dot(dtau6dq4,(Rot6*b6)));
     
-    stripLeadingEdgeDistance=alpha6-tube.stripDistances-stripThickness/2;
-    stripTrailingEdgeDistance=alpha6-tube.stripDistances+stripThickness/2;
+    stripLeadingEdgeDistance=alpha6-stripDistances-stripThickness/2;
+    stripTrailingEdgeDistance=alpha6-stripDistances+stripThickness/2;
        
-    
+    %Finally calculating the actual terms for the Jacobian
     df6drx=(maxBrightness./stripThickness).*sum(((stripTrailingEdgeDistance>(-detectionRad6)./bx6)- (stripLeadingEdgeDistance>(-detectionRad6)./bx6).*(dalpha6drx+(bx6*ddetRad6drx-detectionRad6*dbx6drx)/(bx6^2)) - ((stripTrailingEdgeDistance>(detectionRad6)./bx6)-(stripLeadingEdgeDistance>(detectionRad6)./bx6)).*(dalpha6drx-(bx6*ddetRad6drx-detectionRad6*dbx6drx)/(bx6^2))));
     df6dry=(maxBrightness./stripThickness).*sum(((stripTrailingEdgeDistance>(-detectionRad6)./bx6)- (stripLeadingEdgeDistance>(-detectionRad6)./bx6).*(dalpha6dry+(bx6*ddetRad6dry-detectionRad6*dbx6dry)/(bx6^2)) - ((stripTrailingEdgeDistance>(detectionRad6)./bx6)-(stripLeadingEdgeDistance>(detectionRad6)./bx6)).*(dalpha6dry-(bx6*ddetRad6dry-detectionRad6*dbx6dry)/(bx6^2))));
     df6drz=(maxBrightness./stripThickness).*sum(((stripTrailingEdgeDistance>(-detectionRad6)./bx6)- (stripLeadingEdgeDistance>(-detectionRad6)./bx6).*(dalpha6drz+(bx6*ddetRad6drz-detectionRad6*dbx6drz)/(bx6^2)) - ((stripTrailingEdgeDistance>(detectionRad6)./bx6)-(stripLeadingEdgeDistance>(detectionRad6)./bx6)).*(dalpha6drz-(bx6*ddetRad6drz-detectionRad6*dbx6drz)/(bx6^2))));
@@ -631,16 +636,18 @@ if execution(6)==1
     
     H6kp1=[df6drx df6dry df6drz 0 0 0 df6dq1 df6dq2 df6dq3 df6dq0];
     S6kp1=at1030PECovariance; %Experimentally determined
-    K6kp1=P5kp1kp1*H6kp1'/(H6kp1*P5kp1kp1*H6kp1'+S6kp1);
+    K6kp1=P5kp1kp1*H6kp1'/(H6kp1*P5kp1kp1*H6kp1'+S6kp1); %Kalman Gain
 
     
     h6kp1=(maxBrightness./stripThickness).*sum((stripTrailingEdgeDistance>(-detectionRad6)./bx6).*(stripTrailingEdgeDistance+detectionRad6./bx6) - (stripLeadingEdgeDistance>(-detectionRad6)./bx6).*(stripLeadingEdgeDistance+detectionRad6./bx6) - (stripTrailingEdgeDistance>(detectionRad6)./bx6).*(stripTrailingEdgeDistance-detectionRad6./bx6) + (stripLeadingEdgeDistance>(detectionRad6)./bx6).*(stripLeadingEdgeDistance-detectionRad6./bx6));
-        
+    
+    % The next step compares the data from the sensors with the predicted state and alters
+    %the state prediction by a factor determined by the Kalman Gain        
     x6kp1kp1=x5kp1kp1+K6kp1*(z6kp1-h6kp1);
     P6kp1kp1=(eye(10,10)-K6kp1*H6kp1)*P5kp1kp1;
     
-    normQuat6=sqrt(sum((x5kp1kp1(7:10)).^2));
-    x6kp1kp1(7:10)=x5kp1kp1(7:10)./normQuat6;
+    normQuat6=sqrt(sum((x6kp1kp1(7:10)).^2));
+    x6kp1kp1(7:10)=x6kp1kp1(7:10)./normQuat6;
 else
     x6kp1kp1=x5kp1kp1;
     P6kp1kp1=P5kp1kp1;
@@ -648,28 +655,28 @@ end
 
 
 
-
 % CORRECTIVE STEP 7, 1:30 Photoelectric
 if execution(7)==1
-    
+    % getting sensor data
     z7kp1 = sensorData(7,:);
     
-    
+    % Getting terms from the previous state prediction to use in calculations
     rx7=x6kp1kp1(1);
-    ry5=x6kp1kp1(2);
-    rz5=x6kp1kp1(3);
+    ry7=x6kp1kp1(2);
+    rz7=x6kp1kp1(3);
     q71=x6kp1kp1(7);  
     q72=x6kp1kp1(8);
     q73=x6kp1kp1(9);
     q70=x6kp1kp1(10);
+    %Calculating the rotation matrix
     Rot7=[1-2*q72^2-2*q73^2 2*(q71*q72-q70*q73) 2*(q71*q73+q70*q72);...
      2*(q71*q72+q70*q73) 1-2*q71^2-2*q73^2 2*(q72*q73-q70*q71);...
      2*(q71*q73-q70*q72) 2*(q72*q73+q70*q71) 1-2*q71^2-2*q72^2;];
-    sx7=(Rot7(1,:)*p7 + rx5);
-    sy7=(Rot7(2,:)*p7 + ry5);
-    sz7=(Rot7(3,:)*p7 + rz5);
+    sx7=(Rot7(1,:)*p7 + rx7);
+    sy7=(Rot7(2,:)*p7 + ry7);
+    sz7=(Rot7(3,:)*p7 + rz7);
     
-    
+    %derivatives of the rotation matrix w.r.t. each quaternion to be used to calculate the jacobian
     dRot7dq1=[0 2*q72 2*q73;...
      2*q72 -4*q71 -2*q70;...
      2*q73 2*q70 -4*q71;];
@@ -685,31 +692,31 @@ if execution(7)==1
     dRot7dq0=[0 -2*q73 2*q72;...
      2*q73 0 -2*q71;...
      -2*q72 2*q71 0;];
- 
+    %intermediate terms and their partial derivative terms
     g7=(((sz7-tubeCenterToTopOfRail)*Rot7(3,:))+(sy7*Rot7(2,:)));
     dg7dq1 = (sz7-tubeCenterToTopOfRail)*dRot7dq1(3,:) + (dRot7dq1(3,:)*p7)*Rot7(3,:) + sy7*dRot7dq1(2,:) + (dRot7dq1(2,:)*p7)*Rot7(2,:);
     dg7dq2 = (sz7-tubeCenterToTopOfRail)*dRot7dq2(3,:) + (dRot7dq2(3,:)*p7)*Rot7(3,:) + sy7*dRot7dq2(2,:) + (dRot7dq2(2,:)*p7)*Rot7(2,:);
     dg7dq3 = (sz7-tubeCenterToTopOfRail)*dRot7dq3(3,:) + (dRot7dq3(3,:)*p7)*Rot7(3,:) + sy7*dRot7dq3(2,:) + (dRot7dq3(2,:)*p7)*Rot7(2,:);
     dg7dq0 = (sz7-tubeCenterToTopOfRail)*dRot7dq0(3,:) + (dRot7dq0(3,:)*p7)*Rot7(3,:) + sy7*dRot7dq0(2,:) + (dRot7dq0(2,:)*p7)*Rot7(2,:);
-    
+    %more intermediate terms and their partial derivative terms
     m7=((dot(Rot7(2,:),b7))^2+(dot(Rot7(3,:),b7))^2);
     dm7dq1 = 2*dot(b7,((dot(b7,Rot7(2,:)))*dRot7dq1(2,:) + (dot(b7,Rot7(3,:)))*dRot7dq1(3,:)));
     dm7dq2 = 2*dot(b7,((dot(b7,Rot7(2,:)))*dRot7dq2(2,:) + (dot(b7,Rot7(3,:)))*dRot7dq2(3,:)));
     dm7dq3 = 2*dot(b7,((dot(b7,Rot7(2,:)))*dRot7dq3(2,:) + (dot(b7,Rot7(3,:)))*dRot7dq3(3,:)));
     dm7dq0 = 2*dot(b7,((dot(b7,Rot7(2,:)))*dRot7dq0(2,:) + (dot(b7,Rot7(3,:)))*dRot7dq0(3,:)));
- 
-    tau7 = ((-dot(g7,b7))+sqrt((dot(g7,b7))^2-(m7*((sz7-tubeCenterToTopOfRail)^2-tube.radius^2+sy7^2))))/m7;
+    %more intermediate terms and their partial derivative terms
+    tau7 = ((-dot(g7,b7))+sqrt((dot(g7,b7))^2-(m7*((sz7-tubeCenterToTopOfRail)^2-tubeRadius^2+sy7^2))))/m7;
     
     dtau7drx = 0;
-    dtau7dry = (-dot(Rot7(2,:),b7) + ((dot(g7,b7))*(dot(b7,Rot7(2,:)))-m7*sy7)/sqrt((dot(g7,b7))^2-m7*((sz7-tubeCenterToTopOfRail)^2-tube.radius^2+sy7^2)))/m7;
-    dtau7drz = (-dot(Rot7(3,:),b7) + ((dot(g7,b7))*(dot(b7,Rot7(3,:)))-m7*(sz7-tubeCenterToTopOfRail))/sqrt((dot(g7,b7))^2-m7*((sz7-tubeCenterToTopOfRail)^2-tube.radius^2+sy7^2)))/m7;
+    dtau7dry = (-dot(Rot7(2,:),b7) + ((dot(g7,b7))*(dot(b7,Rot7(2,:)))-m7*sy7)/sqrt((dot(g7,b7))^2-m7*((sz7-tubeCenterToTopOfRail)^2-tubeRadius^2+sy7^2)))/m7;
+    dtau7drz = (-dot(Rot7(3,:),b7) + ((dot(g7,b7))*(dot(b7,Rot7(3,:)))-m7*(sz7-tubeCenterToTopOfRail))/sqrt((dot(g7,b7))^2-m7*((sz7-tubeCenterToTopOfRail)^2-tubeRadius^2+sy7^2)))/m7;
     
-    dtau7dq1=m7*(-dot(b7, ((dot(p7,dRot7dq1(3,:))*Rot7(3,:) +(sz7-tubeCenterToTopOfRail)*dRot7dq1(3,:)+(dot(p7,dRot7dq1(2,:)))*Rot7(2,:)+sy7*dRot7dq1(2,:))) + (2*dot(g7,b7)*dot(dg7dq1,b7)-(2*m7*(sz7-tubeCenterToTopOfRail)*(dRot7dq1(3,:)*p7) + ((sz7-tubeCenterToTopOfRail)^2-tube.radius^2+sy7^2))*dm7dq1))/(2*sqrt((dot(g7,b7))^2-m7*((sz7-tubeCenterToTopOfRail)^2-tube.radius^2+sy7^2))))-((-(dot(g7,b7))+sqrt((dot(g7,b7))^2-m7*((sz7-tubeCenterToTopOfRail)^2-tube.radius^2+sy7^2)))*dm7dq1)/(m7^2);
-    dtau7dq2=m7*(-dot(b7, ((dot(p7,dRot7dq2(3,:))*Rot7(3,:) +(sz7-tubeCenterToTopOfRail)*dRot7dq2(3,:)+(dot(p7,dRot7dq2(2,:)))*Rot7(2,:)+sy7*dRot7dq2(2,:))) + (2*dot(g7,b7)*dot(dg7dq2,b7)-(2*m7*(sz7-tubeCenterToTopOfRail)*(dRot7dq2(3,:)*p7) + ((sz7-tubeCenterToTopOfRail)^2-tube.radius^2+sy7^2))*dm7dq2))/(2*sqrt((dot(g7,b7))^2-m7*((sz7-tubeCenterToTopOfRail)^2-tube.radius^2+sy7^2))))-((-(dot(g7,b7))+sqrt((dot(g7,b7))^2-m7*((sz7-tubeCenterToTopOfRail)^2-tube.radius^2+sy7^2)))*dm7dq2)/(m7^2);
-    dtau7dq3=m7*(-dot(b7, ((dot(p7,dRot7dq3(3,:))*Rot7(3,:) +(sz7-tubeCenterToTopOfRail)*dRot7dq3(3,:)+(dot(p7,dRot7dq3(2,:)))*Rot7(2,:)+sy7*dRot7dq3(2,:))) + (2*dot(g7,b7)*dot(dg7dq3,b7)-(2*m7*(sz7-tubeCenterToTopOfRail)*(dRot7dq3(3,:)*p7) + ((sz7-tubeCenterToTopOfRail)^2-tube.radius^2+sy7^2))*dm7dq3))/(2*sqrt((dot(g7,b7))^2-m7*((sz7-tubeCenterToTopOfRail)^2-tube.radius^2+sy7^2))))-((-(dot(g7,b7))+sqrt((dot(g7,b7))^2-m7*((sz7-tubeCenterToTopOfRail)^2-tube.radius^2+sy7^2)))*dm7dq3)/(m7^2);
-    dtau7dq0=m7*(-dot(b7, ((dot(p7,dRot7dq0(3,:))*Rot7(3,:) +(sz7-tubeCenterToTopOfRail)*dRot7dq0(3,:)+(dot(p7,dRot7dq0(2,:)))*Rot7(2,:)+sy7*dRot7dq0(2,:))) + (2*dot(g7,b7)*dot(dg7dq0,b7)-(2*m7*(sz7-tubeCenterToTopOfRail)*(dRot7dq0(3,:)*p7) + ((sz7-tubeCenterToTopOfRail)^2-tube.radius^2+sy7^2))*dm7dq0))/(2*sqrt((dot(g7,b7))^2-m7*((sz7-tubeCenterToTopOfRail)^2-tube.radius^2+sy7^2))))-((-(dot(g7,b7))+sqrt((dot(g7,b7))^2-m7*((sz7-tubeCenterToTopOfRail)^2-tube.radius^2+sy7^2)))*dm7dq0)/(m7^2);
+    dtau7dq1=m7*(-dot(b7, ((dot(p7,dRot7dq1(3,:))*Rot7(3,:) +(sz7-tubeCenterToTopOfRail)*dRot7dq1(3,:)+(dot(p7,dRot7dq1(2,:)))*Rot7(2,:)+sy7*dRot7dq1(2,:))) + (2*dot(g7,b7)*dot(dg7dq1,b7)-(2*m7*(sz7-tubeCenterToTopOfRail)*(dRot7dq1(3,:)*p7) + ((sz7-tubeCenterToTopOfRail)^2-tubeRadius^2+sy7^2))*dm7dq1))/(2*sqrt((dot(g7,b7))^2-m7*((sz7-tubeCenterToTopOfRail)^2-tubeRadius^2+sy7^2))))-((-(dot(g7,b7))+sqrt((dot(g7,b7))^2-m7*((sz7-tubeCenterToTopOfRail)^2-tubeRadius^2+sy7^2)))*dm7dq1)/(m7^2);
+    dtau7dq2=m7*(-dot(b7, ((dot(p7,dRot7dq2(3,:))*Rot7(3,:) +(sz7-tubeCenterToTopOfRail)*dRot7dq2(3,:)+(dot(p7,dRot7dq2(2,:)))*Rot7(2,:)+sy7*dRot7dq2(2,:))) + (2*dot(g7,b7)*dot(dg7dq2,b7)-(2*m7*(sz7-tubeCenterToTopOfRail)*(dRot7dq2(3,:)*p7) + ((sz7-tubeCenterToTopOfRail)^2-tubeRadius^2+sy7^2))*dm7dq2))/(2*sqrt((dot(g7,b7))^2-m7*((sz7-tubeCenterToTopOfRail)^2-tubeRadius^2+sy7^2))))-((-(dot(g7,b7))+sqrt((dot(g7,b7))^2-m7*((sz7-tubeCenterToTopOfRail)^2-tubeRadius^2+sy7^2)))*dm7dq2)/(m7^2);
+    dtau7dq3=m7*(-dot(b7, ((dot(p7,dRot7dq3(3,:))*Rot7(3,:) +(sz7-tubeCenterToTopOfRail)*dRot7dq3(3,:)+(dot(p7,dRot7dq3(2,:)))*Rot7(2,:)+sy7*dRot7dq3(2,:))) + (2*dot(g7,b7)*dot(dg7dq3,b7)-(2*m7*(sz7-tubeCenterToTopOfRail)*(dRot7dq3(3,:)*p7) + ((sz7-tubeCenterToTopOfRail)^2-tubeRadius^2+sy7^2))*dm7dq3))/(2*sqrt((dot(g7,b7))^2-m7*((sz7-tubeCenterToTopOfRail)^2-tubeRadius^2+sy7^2))))-((-(dot(g7,b7))+sqrt((dot(g7,b7))^2-m7*((sz7-tubeCenterToTopOfRail)^2-tubeRadius^2+sy7^2)))*dm7dq3)/(m7^2);
+    dtau7dq0=m7*(-dot(b7, ((dot(p7,dRot7dq0(3,:))*Rot7(3,:) +(sz7-tubeCenterToTopOfRail)*dRot7dq0(3,:)+(dot(p7,dRot7dq0(2,:)))*Rot7(2,:)+sy7*dRot7dq0(2,:))) + (2*dot(g7,b7)*dot(dg7dq0,b7)-(2*m7*(sz7-tubeCenterToTopOfRail)*(dRot7dq0(3,:)*p7) + ((sz7-tubeCenterToTopOfRail)^2-tubeRadius^2+sy7^2))*dm7dq0))/(2*sqrt((dot(g7,b7))^2-m7*((sz7-tubeCenterToTopOfRail)^2-tubeRadius^2+sy7^2))))-((-(dot(g7,b7))+sqrt((dot(g7,b7))^2-m7*((sz7-tubeCenterToTopOfRail)^2-tubeRadius^2+sy7^2)))*dm7dq0)/(m7^2);
    
- 
+    %more intermediate terms and their partial derivative terms
     alpha7=sx7+dot(Rot7(1,:),b7*tau7);
     
     dalpha7drx = 1+dot(Rot7(1,:),b7*dtau7drx);
@@ -722,7 +729,7 @@ if execution(7)==1
     dalpha7dq0 = dRot7dq0(1,:)*p7 + dot(Rot7(1,:),b7*dtau7dq0) + dot(dRot7dq0(1,:),b7*tau7);
     
     dist7=dot((Rot7*b7),tau7);
-    
+    %more intermediate terms and their partial derivative terms
     bx7=dot(Rot7(1,:),(b7/norm(b7)));
     
     dbx7drx=0;
@@ -735,20 +742,20 @@ if execution(7)==1
     dbx7dq0=dot(dRot7dq0(1,:),(b7/norm(b7)));
     
     detectionRad7=dist7*sin(angleOfPESensitivity/2);
-    
+    %partial derivative of detection radius w.r.t. the position
     ddetRad7drx=sin(angleOfPESensitivity/2)*(dot((dRot7drx*b7),tau7)+dot(dtau7drx,(Rot7*b7)));
     ddetRad7dry=sin(angleOfPESensitivity/2)*(dot((dRot7dry*b7),tau7)+dot(dtau7dry,(Rot7*b7)));
     ddetRad7drz=sin(angleOfPESensitivity/2)*(dot((dRot7drz*b7),tau7)+dot(dtau7drz,(Rot7*b7)));
-    
+    %partial derivative of detection radius w.r.t. the quaternions
     ddetRad7dq1=sin(angleOfPESensitivity/2)*(dot((dRot7dq1*b7),tau7)+dot(dtau7dq1,(Rot7*b7)));
     ddetRad7dq2=sin(angleOfPESensitivity/2)*(dot((dRot7dq2*b7),tau7)+dot(dtau7dq2,(Rot7*b7)));
     ddetRad7dq3=sin(angleOfPESensitivity/2)*(dot((dRot7dq3*b7),tau7)+dot(dtau7dq3,(Rot7*b7)));
     ddetRad7dq0=sin(angleOfPESensitivity/2)*(dot((dRot7dq4*b7),tau7)+dot(dtau7dq4,(Rot7*b7)));
     
-    stripLeadingEdgeDistance=alpha7-tube.stripDistances-stripThickness/2;
-    stripTrailingEdgeDistance=alpha7-tube.stripDistances+stripThickness/2;
+    stripLeadingEdgeDistance=alpha7-stripDistances-stripThickness/2;
+    stripTrailingEdgeDistance=alpha7-stripDistances+stripThickness/2;
        
-    
+    %Finally calculating the actual terms for the Jacobian
     df7drx=(maxBrightness./stripThickness).*sum(((stripTrailingEdgeDistance>(-detectionRad7)./bx7)- (stripLeadingEdgeDistance>(-detectionRad7)./bx7).*(dalpha7drx+(bx7*ddetRad7drx-detectionRad7*dbx7drx)/(bx7^2)) - ((stripTrailingEdgeDistance>(detectionRad7)./bx7)-(stripLeadingEdgeDistance>(detectionRad7)./bx7)).*(dalpha7drx-(bx7*ddetRad7drx-detectionRad7*dbx7drx)/(bx7^2))));
     df7dry=(maxBrightness./stripThickness).*sum(((stripTrailingEdgeDistance>(-detectionRad7)./bx7)- (stripLeadingEdgeDistance>(-detectionRad7)./bx7).*(dalpha7dry+(bx7*ddetRad7dry-detectionRad7*dbx7dry)/(bx7^2)) - ((stripTrailingEdgeDistance>(detectionRad7)./bx7)-(stripLeadingEdgeDistance>(detectionRad7)./bx7)).*(dalpha7dry-(bx7*ddetRad7dry-detectionRad7*dbx7dry)/(bx7^2))));
     df7drz=(maxBrightness./stripThickness).*sum(((stripTrailingEdgeDistance>(-detectionRad7)./bx7)- (stripLeadingEdgeDistance>(-detectionRad7)./bx7).*(dalpha7drz+(bx7*ddetRad7drz-detectionRad7*dbx7drz)/(bx7^2)) - ((stripTrailingEdgeDistance>(detectionRad7)./bx7)-(stripLeadingEdgeDistance>(detectionRad7)./bx7)).*(dalpha7drz-(bx7*ddetRad7drz-detectionRad7*dbx7drz)/(bx7^2))));
@@ -761,21 +768,22 @@ if execution(7)==1
     
     H7kp1=[df7drx df7dry df7drz 0 0 0 df7dq1 df7dq2 df7dq3 df7dq0];
     S7kp1=at130PECovariance; %Experimentally determined
-    K7kp1=P5kp1kp1*H7kp1'/(H7kp1*P6kp1kp1*H7kp1'+S7kp1);
+    K7kp1=P6kp1kp1*H7kp1'/(H7kp1*P6kp1kp1*H7kp1'+S7kp1); %Kalman Gain
 
     
     h7kp1=(maxBrightness./stripThickness).*sum((stripTrailingEdgeDistance>(-detectionRad7)./bx7).*(stripTrailingEdgeDistance+detectionRad7./bx7) - (stripLeadingEdgeDistance>(-detectionRad7)./bx7).*(stripLeadingEdgeDistance+detectionRad7./bx7) - (stripTrailingEdgeDistance>(detectionRad7)./bx7).*(stripTrailingEdgeDistance-detectionRad7./bx7) + (stripLeadingEdgeDistance>(detectionRad7)./bx7).*(stripLeadingEdgeDistance-detectionRad7./bx7));
-        
+    
+    % The next step compares the data from the sensors with the predicted state and alters
+    %the state prediction by a factor determined by the Kalman Gain 
     x7kp1kp1=x6kp1kp1+K7kp1*(z7kp1-h7kp1);
     P7kp1kp1=(eye(10,10)-K7kp1*H7kp1)*P6kp1kp1;
     
-    normQuat7=sqrt(sum((x6kp1kp1(7:10)).^2));
-    x7kp1kp1(7:10)=x6kp1kp1(7:10)./normQuat7;
+    normQuat7=sqrt(sum((x7kp1kp1(7:10)).^2));
+    x7kp1kp1(7:10)=x7kp1kp1(7:10)./normQuat7;
 else
     x7kp1kp1=x6kp1kp1;
     P7kp1kp1=P6kp1kp1;
 end
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 predictedState = x7kp1kp1;
