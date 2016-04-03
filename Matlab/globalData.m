@@ -4,8 +4,8 @@ classdef globalData
         
         %%% TIMING %%%
         timestep = .001 %s
-        kalmanTimestep = .1 %s
-        runtime = 5 %s
+        kalmanTimestep = .001 %s
+        runtime = 15 %s
         numSteps
 
         %%% SIMULATION OPTIONS %%%

@@ -150,8 +150,8 @@ Wk=zeros(10,10);
 
 %The derivative of the rotation matrix in terms of quaternions
 
-
-
+factor = 0.1;
+Qk = factor*eye(6);
 
 
 
@@ -166,7 +166,7 @@ xkp1k=xkk+globals.kalmanTimestep*[  xkk(4:6);...
                        (Rot*uk(1:3))-[0;0;globals.gravity;];...
                        (1/2).*(OmegaMatrix*xkk(7:10));];  %prediction step of the state 
 
-Pkp1k=Fk*Pkk*Fk';%+Bk*Qk*Bk'+Wk; %prediction step of the error, needs to be experimentally determined 
+Pkp1k=Fk*Pkk*Fk'+Bk*Qk*Bk'+Wk; %prediction step of the error, needs to be experimentally determined 
 
 
 normQuat=sqrt(sum((xkp1k(7:10)).^2));
@@ -211,8 +211,9 @@ if execution(1)==1
     
     H1kp1=[0 0 1/sq1 0 0 0 dd1dq1 dd1dq2 dd1dq3 dd1dq0;...
             0 0 0 0 0 0 dtheta1dq1 dtheta1dq2 dtheta1dq3 dtheta1dq0;];
-    S1kp1=diag([0.01,100000]);%XZScannerCovariance; %Experimentally determined
-    
+    %S1kp1=diag([0.01,100000]);%XZScannerCovariance; %Experimentally determined
+    laserFactor = 100;
+    S1kp1 = laserFactor*eye(2);
     K1kp1=Pkp1k*H1kp1'/(H1kp1*Pkp1k*H1kp1'+S1kp1);
 
 
