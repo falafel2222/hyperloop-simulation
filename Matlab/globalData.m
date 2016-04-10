@@ -4,7 +4,7 @@ classdef globalData
         
         %%% TIMING %%%
         timestep = .001 %s
-        kalmanTimestep = .001 %s
+        kalmanTimestep = .01 %s
         runtime = 15 %s
         numSteps
 
@@ -20,7 +20,7 @@ classdef globalData
         gravity = 9.81 % m/s^2
         TEMPERATURE = 350 % K
         TUBE_PRESSURE = 1000 % Pa
-        GAS_CONSTANT = 8.314 % Pa * m^3 / K
+        GAS_CONSTANT = 287.058 % Pa * m^3 / K
         airDensity
     end
     methods
