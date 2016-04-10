@@ -56,59 +56,75 @@ function [] = HyperloopSimV2()
                    2*(q1*q3-q0*q2) 2*(q2*q3+q0*q1) 1-2*q1^2-2*q2^2];
                 
         %get all forces in local
-        localForces=[];
-        localPoints=[];
+        localForces=zeros(3,25);
+        localPoints=zeros(3,25);
+        forceIndex = 1;
            %forces already in local
 
            %%%%% AIR SKATES %%%%%
            
            % for each air skate, calculate the force
            for i = 1:length(pod.airskate(:,1,1))
-               skateForces = zeros(3,length(pod.airskate(i)));  
-               skatePoints = zeros(3,length(pod.airskate(i)));  
+%                skateForces = zeros(3,length(pod.airskate(i)));  
+%                skatePoints = zeros(3,length(pod.airskate(i)));  
                for j = 1:length(pod.airskate(i,:,:))
                   point= rotMatrix*squeeze(pod.airskate(i,j,:)) + transPos(:,n-1); 
 %                   [~, vertDist]=DistanceFinder(point);
                   vertDist = tube.railHeight + point(3);
                   pointForce=SkateForce(vertDist,50e3,pod.skateSegmentLength);
-                  skateForces(3,j)= pointForce/length(pod.airskate(i,:,:));
-                  skatePoints(:,j) = squeeze(pod.airskate(i,j,:));
+%                   skateForces(3,j)= pointForce/length(pod.airskate(i,:,:));
+%                   skatePoints(:,j) = squeeze(pod.airskate(i,j,:));
+                    localForces(3,forceIndex)= pointForce/length(pod.airskate(i,:,:));
+                    localPoints(:,forceIndex) = squeeze(pod.airskate(i,j,:));
+                    forceIndex = forceIndex + 1;
 %                   if (i == 1 && j == 1)
 %                       display(vertDist)
 %                       display(pointForce)
 %                   end
 
                end
-               localForces=[localForces skateForces];
-               localPoints=[localPoints skatePoints];
+%                localForces=[localForces skateForces];
+%                localPoints=[localPoints skatePoints];
            end
 
            
             %%%%% SPACEX PUSHER %%%%%
-%             if transPos(1,n-1) < globals.pusherDistance
-%                 localPusherForce = rotMatrix\[globals.pusherForce; 0; 0];
-%                 localPusherPoint = [-pod.length/2;0;0];
-%                 
+            if transPos(1,n-1) < globals.pusherDistance
+                localPusherForce = rotMatrix\[globals.pusherForce; 0; 0];
+                localPusherPoint = pod.COM;
+                
 %                 localForces=[localForces localPusherForce];
 %                 localPoints=[localPoints localPusherPoint];
-%             end
-%             
-%             
-%             %%%%% DRAG FORCE %%%%%
-%             drag = DRAG_COEFFICIENT* AIR_DENSITY*pod.width*pod.height*(transVel(1,n-1))^2 / 2;
-%             localDragForce = rotMatrix\[-drag;0;0];
-%             localDragPoint= [pod.length/2; 0; 0];
-%             
+                localForces(:,forceIndex) = localPusherForce;
+                localPoints(:,forceIndex) = localPusherPoint;
+                forceIndex = forceIndex + 1;
+            end
+            
+            
+            %%%%% DRAG FORCE %%%%%
+%             drag = DRAG_COEFFICIENT*AIR_DENSITY*pod.height*pod.width/2*(transVel(1,n-1))^2;
+            drag = 2.7*(transVel(1,n-1))^2;
+            localDragForce = rotMatrix\[-drag;0;0];
+            localDragPoint= [pod.length/2; 0; 0];
+            
 %             localForces=[localForces localDragForce];
 %             localPoints=[localPoints localDragPoint];
+            localForces(:,forceIndex) = localDragForce;
+            localPoints(:,forceIndex) = localDragPoint;
+            forceIndex = forceIndex + 1;
             
             %%%GRAVITY FORCE%%
             gravityForce=[0 0 -1*globals.gravity]* pod.mass;
             localGravityForce=rotMatrix\gravityForce';
             localGravityPoint=pod.COM;
+            
+            localForces(:,forceIndex) = localGravityForce;
+            localPoints(:,forceIndex) = localGravityPoint;
+            forceIndex = forceIndex + 1;
+            
+%             localForces=[localForces localGravityForce];
+%             localPoints=[localPoints localGravityPoint];
 
-            localForces=[localForces localGravityForce];
-            localPoints=[localPoints localGravityPoint];
            
         
         
