@@ -12,6 +12,7 @@ classdef podData
         airskate
         skateSegmentLength
         eBrakeForce
+        dragCoef
     end
     methods
         function pod = podData()
@@ -34,6 +35,7 @@ classdef podData
                         -pod.length/2  -pod.width/2   pod.height/2]';
 
             pod.skateSegmentLength = 1.14;
+            pod.dragCoef = 2.7;
                     
             % GENERATE SKATE POINTS
 

@@ -107,8 +107,7 @@ function [] = HyperloopSimV2()
             
             
             %%%%% DRAG FORCE %%%%%
-%             drag = DRAG_COEFFICIENT*AIR_DENSITY*pod.height*pod.width/2*(transVel(1,n-1))^2;
-            drag = 2.7*(transVel(1,n-1))^2;
+            drag = pod.dragCoef*globals.airDensity*pod.height*pod.width/2*(transVel(1,n-1))^2;
             localDragForce = rotMatrix\[-drag;0;0];
             localDragPoint= [pod.length/2; 0; 0];
             
