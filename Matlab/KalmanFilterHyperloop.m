@@ -211,9 +211,9 @@ if execution(1)==1
     
     H1kp1=[0 0 1/sq1 0 0 0 dd1dq1 dd1dq2 dd1dq3 dd1dq0;...
             0 0 0 0 0 0 dtheta1dq1 dtheta1dq2 dtheta1dq3 dtheta1dq0;];
-    %S1kp1=diag([0.01,100000]);%XZScannerCovariance; %Experimentally determined
-    laserFactor = 10;
-    S1kp1 = laserFactor*eye(2);
+    S1kp1=diag([0.01,0.01]);%XZScannerCovariance; %Experimentally determined
+    %laserFactor = 0.01;
+    %S1kp1 = laserFactor*eye(2);
     K1kp1=Pkp1k*H1kp1'/(H1kp1*Pkp1k*H1kp1'+S1kp1);
 
 
