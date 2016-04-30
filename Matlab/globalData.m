@@ -5,7 +5,7 @@ classdef globalData
         %%% TIMING %%%
         timestep = .001 %s
         kalmanTimestep = .01 %s
-        runtime = 15 %s
+        runtime = 5 %s
         numSteps
 
         %%% SIMULATION OPTIONS %%%
@@ -22,6 +22,11 @@ classdef globalData
         TUBE_PRESSURE = 1000 % Pa
         GAS_CONSTANT = 287.058 % Pa * m^3 / K
         airDensity
+        
+        %%% Covariances 'n stuff %%%
+        laserCovariance = .00001
+        IMUCovariance = .0000000001
+        
     end
     methods
         function globals = globalData()

@@ -11,9 +11,9 @@ function [] = HyperloopSimV2()
     
     kalmanFreq = globals.kalmanTimestep/globals.timestep;
 
-
-    noisyKalmanPosIMU = zeros(3,globals.numSteps/kalmanFreq);
-    noisyKalmanVelIMU = zeros(3,globals.numSteps/kalmanFreq);
+    scannerDistances = zeros(globals.numSteps/kalmanFreq+1);
+    noisyKalmanPosIMU = zeros(3,globals.numSteps/kalmanFreq+1);
+    noisyKalmanVelIMU = zeros(3,globals.numSteps/kalmanFreq+1);
     noisyKalmanPosIMU(3,1) = .003;
     
     % pod state variables
@@ -59,91 +59,93 @@ function [] = HyperloopSimV2()
         rotMatrix=[1-2*q2^2-2*q3^2 2*(q1*q2-q0*q3) 2*(q1*q3+q0*q2);...
                    2*(q1*q2+q0*q3) 1-2*q1^2-2*q3^2 2*(q2*q3-q0*q1);...
                    2*(q1*q3-q0*q2) 2*(q2*q3+q0*q1) 1-2*q1^2-2*q2^2];
-                
-        %get all forces in local
-        localForces=zeros(3,25);
-        localPoints=zeros(3,25);
-        forceIndex = 1;
-           %forces already in local
 
-           %%%%% AIR SKATES %%%%%
-           
-           % for each air skate, calculate the force
-           for i = 1:length(pod.airskate(:,1,1))
-%                skateForces = zeros(3,length(pod.airskate(i)));  
-%                skatePoints = zeros(3,length(pod.airskate(i)));  
-               for j = 1:length(pod.airskate(i,:,:))
-                  point= rotMatrix*squeeze(pod.airskate(i,j,:)) + transPos(:,n-1); 
-%                   [~, vertDist]=DistanceFinder(point);
-                  vertDist = tube.railHeight + point(3);
-                  pointForce=SkateForce(vertDist,50e3,pod.skateSegmentLength);
-%                   skateForces(3,j)= pointForce/length(pod.airskate(i,:,:));
-%                   skatePoints(:,j) = squeeze(pod.airskate(i,j,:));
-                    localForces(3,forceIndex)= pointForce/length(pod.airskate(i,:,:));
-                    localPoints(:,forceIndex) = squeeze(pod.airskate(i,j,:));
-                    forceIndex = forceIndex + 1;
-%                   if (i == 1 && j == 1)
-%                       display(vertDist)
-%                       display(pointForce)
-%                   end
+               
+            %get all forces in local
+            localForces=zeros(3,25);
+            localPoints=zeros(3,25);
+            forceIndex = 1;
+               %forces already in local
 
+               %%%%% AIR SKATES %%%%%
+
+               % for each air skate, calculate the force
+               for i = 1:length(pod.airskate(:,1,1))
+    %                skateForces = zeros(3,length(pod.airskate(i)));  
+    %                skatePoints = zeros(3,length(pod.airskate(i)));  
+                   for j = 1:length(pod.airskate(i,:,:))
+                      point= rotMatrix*squeeze(pod.airskate(i,j,:)) + transPos(:,n-1); 
+    %                   [~, vertDist]=DistanceFinder(point);
+                      vertDist = tube.railHeight + point(3);
+                      pointForce=SkateForce(vertDist,50e3,pod.skateSegmentLength);
+    %                   skateForces(3,j)= pointForce/length(pod.airskate(i,:,:));
+    %                   skatePoints(:,j) = squeeze(pod.airskate(i,j,:));
+                        localForces(3,forceIndex)= pointForce/length(pod.airskate(i,:,:));
+                        localPoints(:,forceIndex) = squeeze(pod.airskate(i,j,:));
+                        forceIndex = forceIndex + 1;
+    %                   if (i == 1 && j == 1)
+    %                       display(vertDist)
+    %                       display(pointForce)
+    %                   end
+
+                   end
+    %                localForces=[localForces skateForces];
+    %                localPoints=[localPoints skatePoints];
                end
-%                localForces=[localForces skateForces];
-%                localPoints=[localPoints skatePoints];
-           end
 
-           
-            %%%%% SPACEX PUSHER %%%%%
-            if transPos(1,n-1) < globals.pusherDistance
-                localPusherForce = rotMatrix\[globals.pusherForce; 0; 0];
-                localPusherPoint = pod.COM;
-                
-%                 localForces=[localForces localPusherForce];
-%                 localPoints=[localPoints localPusherPoint];
-                localForces(:,forceIndex) = localPusherForce;
-                localPoints(:,forceIndex) = localPusherPoint;
+
+                %%%%% SPACEX PUSHER %%%%%
+                if transPos(1,n-1) < globals.pusherDistance
+                    localPusherForce = rotMatrix\[globals.pusherForce; 0; 0];
+                    localPusherPoint = pod.COM;
+
+    %                 localForces=[localForces localPusherForce];
+    %                 localPoints=[localPoints localPusherPoint];
+                    localForces(:,forceIndex) = localPusherForce;
+                    localPoints(:,forceIndex) = localPusherPoint;
+                    forceIndex = forceIndex + 1;
+                end
+
+
+                %%%%% DRAG FORCE %%%%%
+                drag = pod.dragCoef*globals.airDensity*pod.height*pod.width/2*(transVel(1,n-1))^2;
+                localDragForce = rotMatrix\[-drag;0;0];
+                localDragPoint= [pod.length/2; 0; 0];
+
+    %             localForces=[localForces localDragForce];
+    %             localPoints=[localPoints localDragPoint];
+                localForces(:,forceIndex) = localDragForce;
+                localPoints(:,forceIndex) = localDragPoint;
                 forceIndex = forceIndex + 1;
-            end
-            
-            
-            %%%%% DRAG FORCE %%%%%
-            drag = pod.dragCoef*globals.airDensity*pod.height*pod.width/2*(transVel(1,n-1))^2;
-            localDragForce = rotMatrix\[-drag;0;0];
-            localDragPoint= [pod.length/2; 0; 0];
-            
-%             localForces=[localForces localDragForce];
-%             localPoints=[localPoints localDragPoint];
-            localForces(:,forceIndex) = localDragForce;
-            localPoints(:,forceIndex) = localDragPoint;
-            forceIndex = forceIndex + 1;
-            
-            %%%GRAVITY FORCE%%
-            gravityForce=[0 0 -1*globals.gravity]* pod.mass;
-            localGravityForce=rotMatrix\gravityForce';
-            localGravityPoint=pod.COM;
-            
-            localForces(:,forceIndex) = localGravityForce;
-            localPoints(:,forceIndex) = localGravityPoint;
-            forceIndex = forceIndex + 1;
-            
-%             localForces=[localForces localGravityForce];
-%             localPoints=[localPoints localGravityPoint];
 
-           
-        
-        
-        if globals.randomNoise
-            
-            forceSize=size(localForces);
-            noise=zeros(3,forceSize(2));
-            for i=1:forceSize(2)
-               magForce=norm(localForces(:,i));
-               noise(:,i)=-1*globals.noiseModifier+(2*globals.noiseModifier*rand())*magForce;
+                %%%GRAVITY FORCE%%
+                gravityForce=[0 0 -1*globals.gravity]* pod.mass;
+                localGravityForce=rotMatrix\gravityForce';
+                localGravityPoint=pod.COM;
+
+                localForces(:,forceIndex) = localGravityForce;
+                localPoints(:,forceIndex) = localGravityPoint;
+                forceIndex = forceIndex + 1;
+
+    %             localForces=[localForces localGravityForce];
+    %             localPoints=[localPoints localGravityPoint];
+
+
+
+
+            if globals.randomNoise
+
+                forceSize=size(localForces);
+                noise=zeros(3,forceSize(2));
+                for i=1:forceSize(2)
+                   magForce=norm(localForces(:,i));
+                   noise(:,i)=-1*globals.noiseModifier+(2*globals.noiseModifier*rand())*magForce;
+                end
+                localForces=localForces+noise; 
             end
-            localForces=localForces+noise; 
-        end
         
-        
+            
+
         
         %calculate torques in local
         netTorque=[0 0 0];
@@ -154,6 +156,9 @@ function [] = HyperloopSimV2()
                    
 %         display(netTorque)
 
+        if (n <= 100)
+           netTorque = [0 0 0];            
+        end
         
         %get theta accel by tensor\torque
         rotAcc(:,n) = pod.tensor \ transpose(netTorque);
@@ -191,18 +196,22 @@ function [] = HyperloopSimV2()
         if eBrakesActuated
             netForce = netForce + [-pod.eBrakeForce; 0; 0];
         end
-                
+        
+        if (n < 100)
+           netForce = [0 0 0];            
+        end
+        
         %get accel, velocity, position
         transAcc(:,n)=netForce/pod.mass;
         transVel(:,n) = transVel(:,n-1) + transAcc(:,n)*globals.timestep;
         transPos(:,n) = transPos(:,n-1) + transVel(:,n)*globals.timestep;
         
-        
         %%%%%%%%%%% KALMAN FILTER STEP %%%%%%%%%%%%%%%%%%%%
         
         % for bare bones implementation testing, we'll have no corrective
         % anything and perfect IMU data
-        
+%         disp('accel')
+%         disp(transAcc(:,n))
         if mod(n,kalmanFreq) == 0
             
             %%%%% GET SENSOR DATA %%%%%
@@ -233,15 +242,29 @@ function [] = HyperloopSimV2()
             end
             
             IMUData = [transAcc(:,n)' rotVel(:,n)']';
-            IMUData = IMUData + [0 0 globals.gravity 0 0 0]';
-
+%             disp('imu')
+%             disp(IMUData)
             % add random noise
-            IMUData = IMUData + sqrt(.1)*randn(1).*IMUData;
-%             sensorData = sensorData + sqrt(.01)*randn(1).*sensorData;
+%             IMUData = IMUData + sqrt(globals.IMUCovariance)*randn(1).*IMUData;
             
+            sensorData = sensorData + sqrt(globals.laserCovariance)*randn(1).*sensorData;
             
-            noisyKalmanVelIMU(:,n/kalmanFreq) = noisyKalmanVelIMU(:,n/kalmanFreq-1) + globals.kalmanTimestep *(IMUData(1:3)- [0;0;globals.gravity]);
-            noisyKalmanPosIMU(:,n/kalmanFreq) = noisyKalmanPosIMU(:,n/kalmanFreq-1) + globals.kalmanTimestep*noisyKalmanVelIMU(:,n);
+%             if (n/kalmanFreq > 1)
+            noisyKalmanVelIMU(:,n/kalmanFreq+1) = noisyKalmanVelIMU(:,n/kalmanFreq) + globals.kalmanTimestep *(IMUData(1:3));
+            noisyKalmanPosIMU(:,n/kalmanFreq+1) = noisyKalmanPosIMU(:,n/kalmanFreq) + globals.kalmanTimestep*noisyKalmanVelIMU(:,n/kalmanFreq+1);
+%             else
+%                 noisyKalmanVelIMU(:,n/kalmanFreq) = globals.kalmanTimestep *(IMUData(1:3));
+%             end
+            
+%                 %disp('vel');
+%                 disp(noisyKalmanVelIMU(:,n/kalmanFreq));
+%                 %disp('pos');
+%                 disp(noisyKalmanPosIMU(:,n/kalmanFreq));                
+                scannerDistances(n/kalmanFreq) = scanner1dist;
+%             disp(scanner1dist);
+            
+
+            IMUData = IMUData + [0 0 globals.gravity 0 0 0]';
 
             [state, covariance] = KalmanFilterHyperloop(state, covariance, IMUData, sensorData, execution);
 
@@ -251,17 +274,25 @@ function [] = HyperloopSimV2()
         
         %check collisions
         endSimul=false;
-%         for point = pod.collisionPoints;
-%             point = rotMatrix*point + transPos(:,n);
-%             [distance, ~]=DistanceFinder(point);
-%             if distance<=0
-%                 norm(point)
-%                 disp('Collision Occurred at timestep');
-%                 disp(n);
-%                 endSimul=true;
-%                 break
-%             end
-%         end
+        for point = pod.collisionPoints;
+            realPoint = rotMatrix*point + transPos(:,n);
+            [distance, ~]=DistanceFinder(realPoint);
+            if mod(n,kalmanFreq) == 0
+                kalmanPoint = rotMatrix*point + kalmanHistory(1:3,n/kalmanFreq);
+                [kalmanDistance, ~] = DistanceFinder(kalmanPoint);
+                if kalmanDistance <= 0
+%                    disp(n); 
+                end
+            end
+
+            if distance<=0
+                norm(point)
+                disp('Collision Occurred at timestep');
+                disp(n);
+                endSimul=true;
+                break
+            end
+        end
         if endSimul
            break 
         end
@@ -276,6 +307,9 @@ function [] = HyperloopSimV2()
     plot(downsample(transPos(3,:),kalmanFreq));
     plot(noisyKalmanPosIMU(3,:));
     hold off
-    
-
+    figure;
+    hold on
+    plot(noisyKalmanVelIMU(3,:));
+    plot(downsample(transVel(3,:),kalmanFreq));
+    hold off
 end
