@@ -1,4 +1,4 @@
-function [predictedState, predictedCovariance] = KalmanFilterHyperloop( prevState, prevCovariance, IMUData, sensorData, execution )
+function [predictedState, predictedCovariance] = KalmanFilterHyperloop( prevState, prevCovariance, IMUData, sensorData, execution, timestep )
 
 globals = globalData();
 pod = podData();
@@ -214,6 +214,11 @@ if execution(1)==1
 %     S1kp1=diag([0.01,1000]);%XZScannerCovariance; %Experimentally determined
 %     laserFactor = 100;
     S1kp1 = globals.laserCovariance*eye(2);
+    disp('--------------------------------------')
+    disp(Pkp1k);
+    disp(H1kp1);
+    disp(H1kp1*Pkp1k*H1kp1');
+    disp(H1kp1*Pkp1k*H1kp1'+S1kp1);
     K1kp1=Pkp1k*H1kp1'/(H1kp1*Pkp1k*H1kp1'+S1kp1);
 
 

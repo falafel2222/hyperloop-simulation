@@ -5,7 +5,7 @@ classdef globalData
         %%% TIMING %%%
         timestep = .001 %s
         kalmanTimestep = .01 %s
-        runtime = 5 %s
+        runtime = 3 %s
         numSteps
 
         %%% SIMULATION OPTIONS %%%
@@ -24,7 +24,7 @@ classdef globalData
         airDensity
         
         %%% Covariances 'n stuff %%%
-        laserCovariance = .00001
+        laserCovariance = .0000000001
         IMUCovariance = .0000000001
         
     end

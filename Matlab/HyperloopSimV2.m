@@ -4,14 +4,18 @@
 function [] = HyperloopSimV2()
     disp('Simulation Started')
     
-    
+        
     globals = globalData();
     pod = podData();
     tube = tubeData();
     
     kalmanFreq = globals.kalmanTimestep/globals.timestep;
 
+    % temporary vectors for debugging purposes
+    rolls = zeros(1,globals.numSteps/kalmanFreq+1);
     scannerDistances = zeros(globals.numSteps/kalmanFreq+1);
+
+    
     noisyKalmanPosIMU = zeros(3,globals.numSteps/kalmanFreq+1);
     noisyKalmanVelIMU = zeros(3,globals.numSteps/kalmanFreq+1);
     noisyKalmanPosIMU(3,1) = .003;
@@ -50,7 +54,7 @@ function [] = HyperloopSimV2()
             disp(transPos(:,n-1)')
             disp(transAcc(:,n-1)')
         end
-         
+        disp(n)
         %calculate rotation matrix
         q0=q(4,n-1);
         q1=q(1,n-1);
@@ -220,7 +224,7 @@ function [] = HyperloopSimV2()
             
             roll = atan2(2*(q0*q1+ q2*q3),1-2*(q1^2 + q2^2));
             pitch = asin(2*(q0*q2 - q3*q1));
-            
+            rolls(n/kalmanFreq) = roll;
             % laser scanners
             scanner1Pos = [0; 0; transPos(3,n)-pod.height/2];
             [~, scanner1dist] = DistanceFinder(rotMatrix*scanner1Pos);
@@ -237,7 +241,7 @@ function [] = HyperloopSimV2()
             sensorData = [[scanner1dist; pitch] [0;0] [0;0] [0;0] [0;0] [0;0] [0;0]];
             execution =  [0 0 0 0 0 0 0];
 
-            if mod(n,kalmanFreq*10) == 0
+            if mod(n,kalmanFreq*5) == 0
                 execution(1) = 1;
             end
             
@@ -246,8 +250,8 @@ function [] = HyperloopSimV2()
 %             disp(IMUData)
             % add random noise
 %             IMUData = IMUData + sqrt(globals.IMUCovariance)*randn(1).*IMUData;
-            
-            sensorData = sensorData + sqrt(globals.laserCovariance)*randn(1).*sensorData;
+%             
+%             sensorData = sensorData + sqrt(globals.laserCovariance)*randn(1).*sensorData;
             
 %             if (n/kalmanFreq > 1)
             noisyKalmanVelIMU(:,n/kalmanFreq+1) = noisyKalmanVelIMU(:,n/kalmanFreq) + globals.kalmanTimestep *(IMUData(1:3));
@@ -266,9 +270,14 @@ function [] = HyperloopSimV2()
 
             IMUData = IMUData + [0 0 globals.gravity 0 0 0]';
 
-            [state, covariance] = KalmanFilterHyperloop(state, covariance, IMUData, sensorData, execution);
+            [state, covariance] = KalmanFilterHyperloop(state, covariance, IMUData, sensorData, execution, n/kalmanFreq);
 
             kalmanHistory(:,n/kalmanFreq) = state;
+%             disp('---------------------')
+%             disp(n/kalmanFreq)
+%             disp(kalmanHistory(3,n/kalmanFreq))
+%             disp(noisyKalmanPosIMU(3,n/kalmanFreq))
+%             disp(transPos(3,n))
         end
         
         
@@ -306,10 +315,20 @@ function [] = HyperloopSimV2()
     hold on
     plot(downsample(transPos(3,:),kalmanFreq));
     plot(noisyKalmanPosIMU(3,:));
+    legend('Kalman','Physical','IMU')
     hold off
     figure;
     hold on
+    IMUvReal=noisyKalmanVelIMU(3,1:end-1)-downsample(transVel(3,:),kalmanFreq);
+
     plot(noisyKalmanVelIMU(3,:));
     plot(downsample(transVel(3,:),kalmanFreq));
+    plot(kalmanHistory(6,:))
+    legend('IMU','Physical','Kalman')
     hold off
+    
+
+   
+
+
 end
