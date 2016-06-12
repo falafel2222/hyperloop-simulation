@@ -1,7 +1,7 @@
 % Hyperloop pod simulation for the OpenLoop Team
 % Created by Alex Goldstein and Adam Shaw
 
-function [] = HyperloopSimV2()
+function [] = HyperloopSim()
     disp('Simulation Started')
     
         
@@ -41,20 +41,18 @@ function [] = HyperloopSimV2()
     kalmanHistory = zeros(10,globals.numSteps/kalmanFreq);
     
     
-    %%%% THINGS THAT WILL EVENTUALLY BE IN CONTROL %%%%
-    eBrakesActuated = false;
-    
+    eBrakesActuated = false;    
     
     disp('Simulation Initialized')
     %%%BEGIN LOOPING THROUGH TIMESTEPS%%%
     for n = 2:globals.numSteps
-        if mod(n,1/globals.timestep) == 0
+        if mod(n,1/(10*globals.timestep)) == 0
             disp('--------------------------')
             disp(n*globals.timestep)
             disp(transPos(:,n-1)')
             disp(transAcc(:,n-1)')
         end
-        disp(n)
+        
         %calculate rotation matrix
         q0=q(4,n-1);
         q1=q(1,n-1);
@@ -69,32 +67,20 @@ function [] = HyperloopSimV2()
             localForces=zeros(3,25);
             localPoints=zeros(3,25);
             forceIndex = 1;
-               %forces already in local
 
                %%%%% AIR SKATES %%%%%
 
                % for each air skate, calculate the force
                for i = 1:length(pod.airskate(:,1,1))
-    %                skateForces = zeros(3,length(pod.airskate(i)));  
-    %                skatePoints = zeros(3,length(pod.airskate(i)));  
                    for j = 1:length(pod.airskate(i,:,:))
                       point= rotMatrix*squeeze(pod.airskate(i,j,:)) + transPos(:,n-1); 
-    %                   [~, vertDist]=DistanceFinder(point);
                       vertDist = tube.railHeight + point(3);
                       pointForce=SkateForce(vertDist,50e3,pod.skateSegmentLength);
-    %                   skateForces(3,j)= pointForce/length(pod.airskate(i,:,:));
-    %                   skatePoints(:,j) = squeeze(pod.airskate(i,j,:));
                         localForces(3,forceIndex)= pointForce/length(pod.airskate(i,:,:));
                         localPoints(:,forceIndex) = squeeze(pod.airskate(i,j,:));
                         forceIndex = forceIndex + 1;
-    %                   if (i == 1 && j == 1)
-    %                       display(vertDist)
-    %                       display(pointForce)
-    %                   end
 
                    end
-    %                localForces=[localForces skateForces];
-    %                localPoints=[localPoints skatePoints];
                end
 
 
@@ -103,8 +89,6 @@ function [] = HyperloopSimV2()
                     localPusherForce = rotMatrix\[globals.pusherForce; 0; 0];
                     localPusherPoint = pod.COM;
 
-    %                 localForces=[localForces localPusherForce];
-    %                 localPoints=[localPoints localPusherPoint];
                     localForces(:,forceIndex) = localPusherForce;
                     localPoints(:,forceIndex) = localPusherPoint;
                     forceIndex = forceIndex + 1;
@@ -116,8 +100,6 @@ function [] = HyperloopSimV2()
                 localDragForce = rotMatrix\[-drag;0;0];
                 localDragPoint= [pod.length/2; 0; 0];
 
-    %             localForces=[localForces localDragForce];
-    %             localPoints=[localPoints localDragPoint];
                 localForces(:,forceIndex) = localDragForce;
                 localPoints(:,forceIndex) = localDragPoint;
                 forceIndex = forceIndex + 1;
@@ -130,11 +112,6 @@ function [] = HyperloopSimV2()
                 localForces(:,forceIndex) = localGravityForce;
                 localPoints(:,forceIndex) = localGravityPoint;
                 forceIndex = forceIndex + 1;
-
-    %             localForces=[localForces localGravityForce];
-    %             localPoints=[localPoints localGravityPoint];
-
-
 
 
             if globals.randomNoise
@@ -212,15 +189,7 @@ function [] = HyperloopSimV2()
         
         %%%%%%%%%%% KALMAN FILTER STEP %%%%%%%%%%%%%%%%%%%%
         
-        % for bare bones implementation testing, we'll have no corrective
-        % anything and perfect IMU data
-%         disp('accel')
-%         disp(transAcc(:,n))
         if mod(n,kalmanFreq) == 0
-            
-            %%%%% GET SENSOR DATA %%%%%
-            
-            %%%%% GET ROLL, PITCH, YAW %%%%%
             
             roll = atan2(2*(q0*q1+ q2*q3),1-2*(q1^2 + q2^2));
             pitch = asin(2*(q0*q2 - q3*q1));
