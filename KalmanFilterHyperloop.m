@@ -4,14 +4,30 @@ globals = globalData();
 pod = podData();
 tube = tubeData();
 
-sensorPositions = zeros(7,3);
-sensorPositions(1,:) = [0,0,-0.5];
-sensorDirections = zeros(7,3);
-sensorDirections(1,:) = [0,0,-1];
+bottomDistancePositions=zeros(3,6);
+downRailDistancePositions=zeros(3,5);
+sideDistancePositions=zeros(3,5);
+pitotPosition=zeros(3,1);
+topPhotoElectricPositions=zeros(3,3);
+leftPhotoElectricPositions=zeros(3,3);
+rightPhotoElectricPositions=zeros(3,3);
+
+bottomDistanceDirections=[0 0 0 0 0 0; 0 0 0 0 0 0; -1 -1 -1 -1 -1 -1;];
+downRailDistanceDirections=[0 0 0 0 0 0; 0 0 0 0 0 0; -1 -1 -1 -1 -1 -1;];
+sideDistanceDirections=[0 0 0 0 0 0;  -1 -1 -1 -1 -1 -1; 0 0 0 0 0 0;];
+pitotDirection=[1;0;0];
+topPhotoElectricDirections=[0 0 0; 0 0 0; 1 1 1;];
+leftPhotoElectricDirections=[0 0 0; 1 1 1; 1 1 1;]/sqrt(2);
+rightPhotoElectricDirections=[0 0 0; -1 -1 -1; 1 1 1;]/sqrt(2);
+
+
+
 thicknessOfRail = .05;
 tubeCenterToTopOfRail=.4;
 maxBrightness=1;
 angleOfPESensitivity=10*pi/180;
+trackHeight=0;%0.72136;
+railTopHeight=tube.railHeight+tube.railTopThickness;
 
 stripWidth=2*0.0254;
 
@@ -37,20 +53,20 @@ stripWidth=2*0.0254;
 %including the use of two photodiodes and their difference as the signal,
 %hence the placeholder variable distanceBetweenPE;
 
-p1 = sensorPositions(1,:)'; %Position of the sensor with respect to the center of mass of the pod
-p2 = sensorPositions(2,:)'; %Position of the sensor with respect to the center of mass of the pod
-p3 = sensorPositions(3,:)'; %Position of the sensor with respect to the center of mass of the pod
-%tck = thicknessOfRail/2;
-p4 = sensorPositions(4,:)'; %Position of the sensor with respect to the center of mass of the pod
-p5 = sensorPositions(4,:)'; %Position of the sensor with respect to the center of mass of the pod
-p6 = sensorPositions(4,:)'; %Position of the sensor with respect to the center of mass of the pod
-p7 = sensorPositions(4,:)'; %Position of the sensor with respect to the center of mass of the pod
-
-
-b4 = sensorDirections(4,:)'; %Ray indicating direction sensor points in local coordinates
-b5 = sensorDirections(5,:)'; %Ray indicating direction sensor points in local coordinates
-b6 = sensorDirections(6,:)'; %Ray indicating direction sensor points in local coordinates
-b7 = sensorDirections(7,:)'; %Ray indicating direction sensor points in local coordinates
+% p1 = sensorPositions(1,:)'; %Position of the sensor with respect to the center of mass of the pod
+% p2 = sensorPositions(2,:)'; %Position of the sensor with respect to the center of mass of the pod
+% p3 = sensorPositions(3,:)'; %Position of the sensor with respect to the center of mass of the pod
+% %tck = thicknessOfRail/2;
+% p4 = sensorPositions(4,:)'; %Position of the sensor with respect to the center of mass of the pod
+% p5 = sensorPositions(4,:)'; %Position of the sensor with respect to the center of mass of the pod
+% p6 = sensorPositions(4,:)'; %Position of the sensor with respect to the center of mass of the pod
+% p7 = sensorPositions(4,:)'; %Position of the sensor with respect to the center of mass of the pod
+% 
+% 
+% b4 = sensorDirections(4,:)'; %Ray indicating direction sensor points in local coordinates
+% b5 = sensorDirections(5,:)'; %Ray indicating direction sensor points in local coordinates
+% b6 = sensorDirections(6,:)'; %Ray indicating direction sensor points in local coordinates
+% b7 = sensorDirections(7,:)'; %Ray indicating direction sensor points in local coordinates
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -160,10 +176,9 @@ OmegaMatrix=[0 omegaZ -omegaY omegaX;...
 Wk=zeros(10,10);
 
 
-%The derivative of the rotation matrix in terms of quaternions
+%this needs to be determined based on IMU error
 
-factor = 0.1;
-Qk = factor*eye(6);
+Qk = [IMUAccelCovariance*eye(3,3) zeros(3,3); zeros(3,3) IMUGyroCovariance*eye(3,3)];
 
 
 
@@ -194,11 +209,12 @@ xkp1k(7:10)=xkp1k(7:10)./normQuat;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % CORRECTIVE STEPS
 
-% CORRECTIVE STEP 1, XZ LASER SCANNER
+% CORRECTIVE STEP 1, Bottom Distance sensors
+%using minimum distance, not distance perpendicular to pod bottom.
 if execution(1)==1
     
-    z1kp1 = sensorData(:,1);
-    
+    z1kp1 = sensorData(1:6,1);
+    p1=bottomDistancePositions;
     rz1=xkp1k(3);
     q11=xkp1k(7);  
     q12=xkp1k(8);
@@ -207,25 +223,21 @@ if execution(1)==1
     Rot1=[1-2*q12^2-2*q13^2 2*(q11*q12-q10*q13) 2*(q11*q13+q10*q12);...
      2*(q11*q12+q10*q13) 1-2*q11^2-2*q13^2 2*(q12*q13-q10*q11);...
      2*(q11*q13-q10*q12) 2*(q12*q13+q10*q11) 1-2*q11^2-2*q12^2;];
-    sz1=(Rot1(3,:)*p1+rz1+0.72136);
-    sq1=sqrt(Rot1(2,2)^2+Rot1(1,2)^2);
+    sz1=(Rot1(3,:)*p1+rz1); %+0.72136); why magic number?
     
-    dd1dq1=(sq1*([2*q13 2*q10 -4*q11]*p1)-sz1*(Rot1(2,2)*(-4*q11) + Rot1(1,2)*2*q12)/sq1)/(sq1^2);
-    dd1dq2=(sq1*([-2*q10 2*q13 -4*q12]*p1)-sz1*(Rot1(2,2)*0 + Rot1(1,2)*2*q11)/sq1)/(sq1^2);
-    dd1dq3=(sq1*([2*q11 2*q12 0]*p1)-sz1*(Rot1(2,2)*(-4*q13) + Rot1(1,2)*-2*q10)/sq1)/(sq1^2);
-    dd1dq0=(sq1*([-2*q12 2*q11 0]*p1)-sz1*(Rot1(2,2)*0 + Rot1(1,2)*-2*q13)/sq1)/(sq1^2);
-    
-    dtheta1dq1=(-1/sqrt(1-((Rot1(1,2)*Rot1(2,1)-Rot1(1,1)*Rot1(2,2))/sq1)^2))*(sq1*((-4*q11)*Rot1(2,1)+2*q12*Rot1(1,2)-0*Rot1(2,2)-2*q12*Rot1(1,1)) - (Rot1(1,2)*Rot1(2,1)-Rot1(1,1)*Rot1(2,2))*(Rot1(2,2)*(-4*q11) + Rot1(1,2)*2*q12)/sq1)/(sq1^2);
-    dtheta1dq2=(-1/sqrt(1-((Rot1(1,2)*Rot1(2,1)-Rot1(1,1)*Rot1(2,2))/sq1)^2))*(sq1*(0*Rot1(2,1)+2*q11*Rot1(1,2)-q12*-4*Rot1(2,2)-2*q11*Rot1(1,1)) - (Rot1(1,2)*Rot1(2,1)-Rot1(1,1)*Rot1(2,2))*(Rot1(2,2)*0 + Rot1(1,2)*2*q11)/sq1)/(sq1^2);
-    dtheta1dq3=(-1/sqrt(1-((Rot1(1,2)*Rot1(2,1)-Rot1(1,1)*Rot1(2,2))/sq1)^2))*(sq1*(-4*q13*Rot1(2,1)+2*q10*Rot1(1,2)-q13*-4*Rot1(2,2)-q10*-2*Rot1(1,1)) - (Rot1(1,2)*Rot1(2,1)-Rot1(1,1)*Rot1(2,2))*(Rot1(2,2)*(-4*q13) + Rot1(1,2)*-2*q10)/sq1)/(sq1^2);
-    dtheta1dq0=(-1/sqrt(1-((Rot1(1,2)*Rot1(2,1)-Rot1(1,1)*Rot1(2,2))/sq1)^2))*(sq1*(0*Rot1(2,1)+2*q13*Rot1(1,2)-0*Rot1(2,2)-q13*-2*Rot1(1,1)) - (Rot1(1,2)*Rot1(2,1)-Rot1(1,1)*Rot1(2,2))*(Rot1(2,2)*0 + Rot1(1,2)*-2*q13)/sq1)/(sq1^2);
+    dd1dq1=[2*q13 2*q10 -4*q11]*p1;
+    dd1dq2=[-2*q10 2*q13 -4*q12]*p1;
+    dd1dq3=[2*q11 2*q12 0]*p1;
+    dd1dq0=[-2*q12 2*q11 0]*p1;
     
     
-    H1kp1=[0 0 1/sq1 0 0 0 dd1dq1 dd1dq2 dd1dq3 dd1dq0;...
-            0 0 0 0 0 0 dtheta1dq1 dtheta1dq2 dtheta1dq3 dtheta1dq0;];
+    H1kp1=[0 0 ones(6,1) 0 0 0 dd1dq1' dd1dq2' dd1dq3' dd1dq0'];%perpendicular to track
+%     H1kp1=[0 0 ones(6,1)/Rot1(3,3) 0 0 0
+%     (Rot1(3,3)*dd1dq1'-((sz1+trackHeight)*-4*q11))/((Rot1(3,3))^2) (Rot1(3,3)*dd1dq2'-((sz1+trackHeight)*-4*q12))/((Rot1(3,3))^2) (Rot1(3,3)*dd1dq3'-((sz1+trackHeight)*0)/((Rot1(3,3))^2) (Rot1(3,3)*dd1dq0'-((sz1+trackHeight)*0))/((Rot1(3,3))^2)]; %normal to pod bottom
+
 %     S1kp1=diag([0.01,1000]);%XZScannerCovariance; %Experimentally determined
 %     laserFactor = 100;
-    S1kp1 = globals.laserCovariance*eye(2);
+    S1kp1 = globals.distanceDownCovariance*eye(6);
 %     disp('--------------------------------------')
 %     disp(Pkp1k);
 %     disp(H1kp1);
@@ -234,8 +246,8 @@ if execution(1)==1
     K1kp1=Pkp1k*H1kp1'/(H1kp1*Pkp1k*H1kp1'+S1kp1);
 
 
-    h1kp1=[sz1/sq1;...
-           acos((Rot1(1,2)*Rot1(2,1)-Rot1(1,1)*Rot1(2,2))/sq1);];
+    h1kp1=sz1+trackHeight; %perpendicular to track
+    % h1kp1=(sz1+trackHeight)/Rot1(3,3); %normal to pod bottom
        
     x1kp1kp1=xkp1k+K1kp1*(z1kp1-h1kp1);
     P1kp1kp1=(eye(10,10)-K1kp1*H1kp1)*Pkp1k;
@@ -249,11 +261,12 @@ end
 
 
 
-% CORRECTIVE STEP 2, YZ LASER SCANNER
+% CORRECTIVE STEP 2, downwards-pointing rail distance sensors
 if execution(2)==1
     
     z2kp1 = sensorData(2,:);
         
+    p2=downRailDistancePositions;
     rz2=x1kp1kp1(3);
     q21=x1kp1kp1(7);  
     q22=x1kp1kp1(8);
@@ -263,28 +276,23 @@ if execution(2)==1
      2*(q21*q22+q20*q23) 1-2*q21^2-2*q23^2 2*(q22*q23-q20*q21);...
      2*(q21*q23-q20*q22) 2*(q22*q23+q20*q21) 1-2*q21^2-2*q22^2;];
     sz2=(Rot2(3,:)*p2+rz2);
-    sq2=sqrt(Rot2(2,1)^2+Rot2(1,1)^2);
     
     
-    dd2dq1=(sq2*([2*q23 2*q20 -4*q21]*p2)-sz2*(Rot2(2,1)*(2*q22) + Rot2(1,1)*0)/sq2)/(sq2^2);
-    dd2dq2=(sq2*([-2*q20 2*q23 -4*q22]*p2)-sz2*(Rot2(2,1)*2*q21 + Rot2(1,1)*-4*q22)/sq2)/(sq2^2);
-    dd2dq3=(sq2*([2*q21 2*q22 0]*p2)-sz2*(Rot2(2,1)*(2*q20) + Rot2(1,1)*-4*q23)/sq2)/(sq2^2);
-    dd2dq0=(sq2*([-2*q22 2*q21 0]*p2)-sz2*(Rot2(2,1)*2*q23 + Rot2(1,1)*0)/sq2)/(sq2^2);
-    
-    dtheta2dq1=(1/sqrt(1-((Rot2(1,2)*Rot2(2,1)-Rot2(1,1)*Rot2(2,2))/sq2)^2))*(sq2*((-4*q21)*Rot2(2,1)+2*q22*Rot2(1,2)-0*Rot2(2,2)-2*q22*Rot2(1,1)) - (Rot2(1,2)*Rot2(2,1)-Rot2(1,1)*Rot2(2,2))*(Rot2(2,2)*(Rot2(2,1)*(2*q22) + Rot2(1,1)*0)/sq2)/(sq2^2));
-    dtheta2dq2=(1/sqrt(1-((Rot2(1,2)*Rot2(2,1)-Rot2(1,1)*Rot2(2,2))/sq2)^2))*(sq2*(0*Rot2(2,1)+2*q21*Rot2(1,2)-q22*-4*Rot2(2,2)-2*q21*Rot2(1,1)) - (Rot2(1,2)*Rot2(2,1)-Rot2(1,1)*Rot2(2,2))*(Rot2(2,1)*2*q21 + Rot2(1,1)*-4*q22)/sq2)/(sq2^2);
-    dtheta2dq3=(1/sqrt(1-((Rot2(1,2)*Rot2(2,1)-Rot2(1,1)*Rot2(2,2))/sq2)^2))*(sq2*(-4*q23*Rot2(2,1)+2*q20*Rot2(1,2)-q23*-4*Rot2(2,2)-q20*-2*Rot2(1,1)) - (Rot2(1,2)*Rot2(2,1)-Rot2(1,1)*Rot2(2,2))*(Rot2(2,1)*(2*q20) + Rot2(1,1)*-4*q23)/sq2)/(sq2^2);
-    dtheta2dq0=(1/sqrt(1-((Rot2(1,2)*Rot2(2,1)-Rot2(1,1)*Rot2(2,2))/sq2)^2))*(sq2*(0*Rot2(2,1)+2*q23*Rot2(1,2)-0*Rot2(2,2)-q23*-2*Rot2(1,1)) - (Rot2(1,2)*Rot2(2,1)-Rot2(1,1)*Rot2(2,2))*(Rot2(2,1)*2*q23 + Rot2(1,1)*0)/sq2)/(sq2^2);
-    
-    
-    H2kp1=[0 0 1/sq2 0 0 0 dd2dq1 dd2dq2 dd2dq3 dd2dq0;...
-            0 0 0 0 0 0 dtheta2dq1 dtheta2dq2 dtheta2dq3 dtheta2dq0;];
-    S2kp1=YZScannerCovariance; %Experimentally determined
+    dd2dq1=[2*q23 2*q20 -4*q21]*p2;
+    dd2dq2=[-2*q20 2*q23 -4*q22]*p2;
+    dd2dq3=[2*q21 2*q22 0]*p2;
+    dd2dq0=[-2*q22 2*q21 0]*p2;
+     
+        H2kp1=[0 0 ones(5,1) 0 0 0 dd2dq1' dd2dq2' dd2dq3' dd2dq0'];%perpendicular to track
+%     H2kp1=[0 0 ones(5,1)/Rot2(3,3) 0 0 0
+%     (Rot2(3,3)*dd2dq1'-((sz2+railTopHeight)*-4*q21))/((Rot2(3,3))^2) (Rot2(3,3)*dd2dq2'-((sz2+railTopHeight)*-4*q22))/((Rot2(3,3))^2) (Rot2(3,3)*dd2dq3'-((sz2+railTopHeight)*0)/((Rot2(3,3))^2) (Rot2(3,3)*dd2dq0'-((sz2+railTopHeight)*0))/((Rot2(3,3))^2)]; %normal to pod bottom
+
+    S2kp1=globals.distanceDownCovariance*eye(5); %Experimentally determined
     K2kp1=P1kp1kp1*H2kp1'/(H2kp1*P1kp1kp1*H2kp1'+S2kp1);
 
     
-    h2kp1=[sz2/sq2;...
-           acos((Rot2(1,2)*Rot2(2,1)-Rot2(1,1)*Rot2(2,2))/sq2);];
+    h2kp1=sz2+railTopHeight; %perpendicular to track
+    % h2kp1=(sz2+railTopHeight)/Rot2(3,3); %normal to pod bottom
         
     x2kp1kp1=x1kp1kp1+K2kp1*(z2kp1-h2kp1);
     P2kp1kp1=(eye(10,10)-K2kp1*H2kp1)*P1kp1kp1;
@@ -298,11 +306,12 @@ end
 
 
 
-% CORRECTIVE STEP 3, XY LASER SCANNER
+% CORRECTIVE STEP 3, side distance sensors
 if execution(3)==1
     
     z3kp1 = sensorData(3,:);
-        
+    
+    p3=sideDistancePositions;
     ry3=x2kp1kp1(2);
     q31=x2kp1kp1(7);  
     q32=x2kp1kp1(8);
@@ -316,25 +325,21 @@ if execution(3)==1
     m3=Rot3(1,1)*Rot3(3,3)-Rot3(1,3)*Rot3(3,1);
     
     
-    dd3dq1=-(thicknessOfRail/4)*((sq3)^(-3))*(2*Rot3(3,3)*-4*q31+2*Rot3(1,3)*2*q33)-(sq3*([2*q32 -4*q31 -2*q30]*p3)-0.5*(sy3*(2*Rot3(3,3)*-4*q31+2*Rot3(1,3)*2*q33)/sq3))/(sq3^2);
-    dd3dq2=-(thicknessOfRail/4)*((sq3)^(-3))*(2*Rot3(3,3)*-4*q32+2*Rot3(1,3)*2*q30)-(sq3*([2*q31 0 2*q33]*p3)-0.5*(sy3*(2*Rot3(3,3)*-4*q32+2*Rot3(1,3)*2*q30)/sq3))/(sq3^2);
-    dd3dq3=-(thicknessOfRail/4)*((sq3)^(-3))*(2*Rot3(3,3)*0+2*Rot3(1,3)*2*q31)-(sq3*([2*q30 -4*q33 2*q32]*p3)-0.5*(sy3*(2*Rot3(3,3)*0+2*Rot3(1,3)*2*q31)/sq3))/(sq3^2);
-    dd3dq0=-(thicknessOfRail/4)*((sq3)^(-3))*(2*Rot3(3,3)*0+2*Rot3(1,3)*2*q32)-(sq3*([2*q33 0 -2*q31]*p3)-0.5*(sy3*(2*Rot3(3,3)*-2*q31+2*Rot3(1,3)*2*q32)/sq3))/(sq3^2);
+    dd3dq1=[2*q32 -4*q31 -2*q30]*p3;
+    dd3dq2=[2*q31 0 2*q33]*p3;
+    dd3dq3=[2*q30 -4*q33 2*q32]*p3;
+    dd3dq0=[2*q33 0 -2*q31]*p3;
+   
     
-    dtheta3dq1=-(((Rot3(1,1)*-4*q31+1*-4*q31*Rot3(3,3))-(Rot3(1,3)*2*q33+2*q33*Rot3(3,1)))*sq3-((0.5/sq3)*(2*Rot3(3,3)*-4*q31+2*Rot3(1,3)*2*q33))*m3)/((sq3^2)*sqrt(1-(m3/sq3)^2));
-    dtheta3dq2=-(((Rot3(1,1)*-4*q32+1*-4*q32*Rot3(3,3))-(Rot3(1,3)*-2*q30+2*q30*Rot3(3,1)))*sq3-((0.5/sq3)*(2*Rot3(3,3)*-4*q32+2*Rot3(1,3)*2*q30))*m3)/((sq3^2)*sqrt(1-(m3/sq3)^2));
-    dtheta3dq3=-(((Rot3(1,1)*0+1*-4*q33*Rot3(3,3))-(Rot3(1,3)*2*q31+2*q31*Rot3(3,1)))*sq3-((0.5/sq3)*(2*Rot3(3,3)*0+2*Rot3(1,3)*2*q31))*m3)/((sq3^2)*sqrt(1-(m3/sq3)^2));
-    dtheta3dq0=-(((Rot3(1,1)*0+0*Rot3(3,3))-(Rot3(1,3)*-2*q32+2*q32*Rot3(3,1)))*sq3-((0.5/sq3)*(2*Rot3(3,3)*0+2*Rot3(1,3)*2*q32))*m3)/((sq3^2)*sqrt(1-(m3/sq3)^2));
-    
-    
-    H3kp1=[0 1/sq3 0 0 0 0 dd3dq1 dd3dq2 dd3dq3 dd3dq0;...
-            0 0 0 0 0 0 dtheta3dq1 dtheta3dq2 dtheta3dq3 dtheta3dq0;];
-    S3kp1=XYScannerCovariance; %Experimentally determined
+    H3kp1=[0 ones(5,1) 0 0 0 0 dd3dq1' dd3dq2' dd3dq3' dd3dq0'];
+%     H3kp1=[0 0 ones(5,1)/Rot3(2,2) 0 0 0 (Rot3(2,2)*dd3dq1'-((sy3-(thicknessOfRail/2))*-4*q31))/((Rot3(2,2))^2) (Rot3(2,2)*dd3dq2'-((sy3-(thicknessOfRail/2))*0))/((Rot3(2,2))^2) (Rot3(2,2)*dd3dq3'-((sy3-(thicknessOfRail/2))*-4*q33))/((Rot3(2,2))^2) (Rot3(2,2)*dd3dq0'-((sy3-(thicknessOfRail/2))*0))/((Rot3(2,2))^2)]; %normal to pod side
+
+    S3kp1=globals.distanceSideCovariance*eye(5); %Experimentally determined
     K3kp1=P2kp1kp1*H3kp1'/(H3kp1*P2kp1kp1*H3kp1'+S3kp1);
 
     
-    h3kp1=[((thicknessOfRail/2)-sy3)/sq3;
-           acos((Rot3(1,1)*Rot3(3,3)-Rot3(1,3)*Rot3(3,1))/sq3);];
+    h3kp1=sy3-(thicknessOfRail/2);%perpendicular to rail side
+    % h3kp1=(sy3-(thicknessOfRail/2))/Rot3(2,2); %normal to pod side
         
     x3kp1kp1=x2kp1kp1+K3kp1*(z3kp1-h3kp1);
     P3kp1kp1=(eye(10,10)-K3kp1*H3kp1)*P2kp1kp1;
@@ -351,6 +356,9 @@ end
 if execution(4)==1
     
     z4kp1 = sensorData(4,:);
+    
+    p4=pitotPosition;
+    b4=pitotDirection;
     
     vPod4 = x3kp1kp1(4:6);
     q41=x3kp1kp1(7);  
@@ -389,7 +397,7 @@ if execution(4)==1
     
     
     H4kp1=[0 0 0 ddP4dvx ddP4dvy ddP4dvz ddP4dq1 ddP4dq2 ddP4dq3 ddP4dq0];
-    S4kp1=PitotCovariance; %Experimentally determined
+    S4kp1=gloabals.pitotCovariance; %Experimentally determined
     K4kp1=P3kp1kp1*H4kp1'/(H4kp1*P3kp1kp1*H4kp1'+S4kp1);
 
     
@@ -411,6 +419,9 @@ end
 if execution(5)==1
     % getting sensor data
     z5kp1 = sensorData(5,:);
+    
+    p5=topPhotoelectricPosition;
+    b5=topPhotoelectricDirection;
     
     % Getting terms from the previous state prediction to use in calculation
     rx5=x4kp1kp1(1);

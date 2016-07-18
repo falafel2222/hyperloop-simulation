@@ -24,8 +24,12 @@ classdef globalData
         airDensity
         
         %%% Covariances 'n stuff %%%
-        laserCovariance = .0000000001
-        IMUCovariance = .0000000001
+        photoelectricCovariance = .0000000001
+        pitotCovariance = .0000000001
+        distanceDownCovariance = .0000000001
+        distanceSideCovariance = .0000000001
+        IMUAccelCovariance = .0000000001
+        IMUGyroCovariance = .0000000001
         
     end
     methods
