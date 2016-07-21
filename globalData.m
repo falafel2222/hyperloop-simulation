@@ -9,8 +9,8 @@ classdef globalData
         numSteps
 
         %%% SIMULATION OPTIONS %%%
-        randomNoise=false;
-        noiseModifier=0.00000001;
+        randomNoise=true;
+        noiseModifier=0.0001;
             
         %%% TUBE SPECS %%%
         pusherForce = 17640 % newtons
@@ -28,8 +28,8 @@ classdef globalData
         pitotCovariance = .0000000001
         distanceDownCovariance = .0000000001
         distanceSideCovariance = .0000000001
-        IMUAccelCovariance = .0000000001
-        IMUGyroCovariance = .0000000001
+        IMUAccelCovariance = .001
+        IMUGyroCovariance = .0001
         
     end
     methods

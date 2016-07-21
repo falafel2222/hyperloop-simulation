@@ -4,7 +4,8 @@ globals = globalData();
 pod = podData();
 tube = tubeData();
 
-bottomDistancePositions=zeros(3,6);
+% bottomDistancePositions=zeros(3,6);
+bottomDistancePositions=[0 0 pod.length/2 pod.length/2 -pod.length/2 -pod.length/2;pod.width/2 -pod.width/2 pod.width/2 -pod.width/2 pod.width/2 -pod.width/2;-pod.height/2 -pod.height/2 -pod.height/2 -pod.height/2 -pod.height/2 -pod.height/2];
 downRailDistancePositions=zeros(3,5);
 sideDistancePositions=zeros(3,5);
 pitotPosition=zeros(3,1);
@@ -178,7 +179,8 @@ Wk=zeros(10,10);
 
 %this needs to be determined based on IMU error
 
-Qk = [IMUAccelCovariance*eye(3,3) zeros(3,3); zeros(3,3) IMUGyroCovariance*eye(3,3)];
+ Qk = [globals.IMUAccelCovariance*eye(3,3) zeros(3,3); zeros(3,3) globals.IMUGyroCovariance*eye(3,3)];
+
 
 
 
@@ -229,9 +231,9 @@ if execution(1)==1
     dd1dq2=[-2*q10 2*q13 -4*q12]*p1;
     dd1dq3=[2*q11 2*q12 0]*p1;
     dd1dq0=[-2*q12 2*q11 0]*p1;
+ 
     
-    
-    H1kp1=[0 0 ones(6,1) 0 0 0 dd1dq1' dd1dq2' dd1dq3' dd1dq0'];%perpendicular to track
+    H1kp1=[zeros(6,1) zeros(6,1) ones(6,1) zeros(6,1) zeros(6,1) zeros(6,1) dd1dq1' dd1dq2' dd1dq3' dd1dq0'];%perpendicular to track
 %     H1kp1=[0 0 ones(6,1)/Rot1(3,3) 0 0 0
 %     (Rot1(3,3)*dd1dq1'-((sz1+trackHeight)*-4*q11))/((Rot1(3,3))^2) (Rot1(3,3)*dd1dq2'-((sz1+trackHeight)*-4*q12))/((Rot1(3,3))^2) (Rot1(3,3)*dd1dq3'-((sz1+trackHeight)*0)/((Rot1(3,3))^2) (Rot1(3,3)*dd1dq0'-((sz1+trackHeight)*0))/((Rot1(3,3))^2)]; %normal to pod bottom
 
@@ -246,7 +248,7 @@ if execution(1)==1
     K1kp1=Pkp1k*H1kp1'/(H1kp1*Pkp1k*H1kp1'+S1kp1);
 
 
-    h1kp1=sz1+trackHeight; %perpendicular to track
+    h1kp1=sz1'+trackHeight; %perpendicular to track
     % h1kp1=(sz1+trackHeight)/Rot1(3,3); %normal to pod bottom
        
     x1kp1kp1=xkp1k+K1kp1*(z1kp1-h1kp1);
