@@ -27,14 +27,14 @@ classdef globalData
         photoelectricCovariance = .0000000001
         pitotCovariance = .0000000001
         distanceDownCovariance = .0001
-        distanceSideCovariance = .0000000001
+        distanceSideCovariance = .00001
         IMUAccelCovariance = .00001
         IMUGyroCovariance = .000001
         
     end
     methods
         function globals = globalData()
-            globals.numSteps = globals.runtime / globals.timestep;
+            globals.numSteps =globals.runtime / globals.timestep;
             globals.airDensity = globals.TUBE_PRESSURE...
                 /(globals.GAS_CONSTANT*globals.TEMPERATURE);
         end        

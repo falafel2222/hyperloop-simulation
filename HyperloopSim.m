@@ -49,12 +49,12 @@ function [] = HyperloopSim()
     disp('Simulation Initialized')
     %%%BEGIN LOOPING THROUGH TIMESTEPS%%%
     for n = 2:globals.numSteps
-        if mod(n,1/(10*globals.timestep)) == 0
-            disp('--------------------------')
-            disp(n*globals.timestep)
-            disp(transPos(:,n-1)')
-            disp(transAcc(:,n-1)')
-        end
+%         if mod(n,1/(10*globals.timestep)) == 0
+%             disp('--------------------------')
+%             disp(n*globals.timestep)
+%             disp(transPos(:,n-1)')
+%             disp(transAcc(:,n-1)')
+%         end
         
         %calculate rotation matrix
         q0=q(4,n-1);
@@ -205,17 +205,15 @@ function [] = HyperloopSim()
 
             distance2Pos = transPos(:,n)*ones(1,5)+rotMatrix*[pod.length/2 pod.length/3 0 -pod.length/3 -pod.length/2;0 0 0 0 0;pod.downSensorOffset  pod.downSensorOffset pod.downSensorOffset pod.downSensorOffset pod.downSensorOffset];
             for i=1:5
-                [~, scanner2dist(i)] = DistanceFinder(distance2Pos(:,i)); 
+                [scanner2dist(i)] = TrackDistanceFinder(distance2Pos(:,i)); 
             end
 
-            distance3Pos = transPos(:,n)*ones(1,5)+rotMatrix*[pod.length/2 pod.length/3 0 -pod.length/3 -pod.length/2;0 0 0 0 0;pod.downSensorOffset  pod.downSensorOffset pod.downSensorOffset pod.downSensorOffset pod.downSensorOffset];
+            distance3Pos = transPos(:,n)*ones(1,5)+rotMatrix*[pod.length/2 pod.length/3 0 -pod.length/3 -pod.length/2;pod.sideSensorDistance pod.sideSensorDistance pod.sideSensorDistance pod.sideSensorDistance pod.sideSensorDistance;-pod.skateHeight/2 -pod.skateHeight/2 -pod.skateHeight/2 -pod.skateHeight/2 -pod.skateHeight/2];
             for i=1:5
                 [~, scanner3dist(i)] = InsideDistance(distance3Pos(:,i)); 
             end
             
 
-            
-            
             
             sensorData = [[scanner1dist'] [scanner2dist'; 0;] [scanner3dist'; 0;] [0;0;0;0;0;0;] [0;0;0;0;0;0;] [0;0;0;0;0;0;] [0;0;0;0;0;0;]];
             execution =  [0 0 0 0 0 0 0];

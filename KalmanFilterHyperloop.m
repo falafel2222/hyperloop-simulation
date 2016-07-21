@@ -7,7 +7,7 @@ tube = tubeData();
 % bottomDistancePositions=zeros(3,6);
 bottomDistancePositions=[0 0 pod.length/2 pod.length/2 -pod.length/2 -pod.length/2;pod.width/2 -pod.width/2 pod.width/2 -pod.width/2 pod.width/2 -pod.width/2;pod.downSensorOffset-pod.skateHeight pod.downSensorOffset-pod.skateHeight pod.downSensorOffset-pod.skateHeight pod.downSensorOffset-pod.skateHeight pod.downSensorOffset-pod.skateHeight pod.downSensorOffset-pod.skateHeight];
 downRailDistancePositions=[pod.length/2 pod.length/3 0 -pod.length/3 -pod.length/2;0 0 0 0 0;pod.downSensorOffset  pod.downSensorOffset pod.downSensorOffset pod.downSensorOffset pod.downSensorOffset];
-sideDistancePositions=zeros(3,5);
+sideDistancePositions=[pod.length/2 pod.length/3 0 -pod.length/3 -pod.length/2;pod.sideSensorDistance pod.sideSensorDistance pod.sideSensorDistance pod.sideSensorDistance pod.sideSensorDistance;-pod.skateHeight/2 -pod.skateHeight/2 -pod.skateHeight/2 -pod.skateHeight/2 -pod.skateHeight/2];
 pitotPosition=zeros(3,1);
 topPhotoElectricPositions=zeros(3,3);
 leftPhotoElectricPositions=zeros(3,3);
@@ -23,7 +23,7 @@ rightPhotoElectricDirections=[0 0 0; -1 -1 -1; 1 1 1;]/sqrt(2);
 
 
 
-thicknessOfRail = .05;
+thicknessOfRail = 0.0079502;
 tubeCenterToTopOfRail=.4;
 maxBrightness=1;
 angleOfPESensitivity=10*pi/180;
@@ -293,7 +293,7 @@ if execution(2)==1
     K2kp1=P1kp1kp1*H2kp1'/(H2kp1*P1kp1kp1*H2kp1'+S2kp1);
 
     
-    h2kp1=sz2'+railTopHeight; %perpendicular to track
+    h2kp1=sz2'-railTopHeight; %perpendicular to track
     % h2kp1=(sz2+railTopHeight)/Rot2(3,3); %normal to pod bottom
       
     x2kp1kp1=x1kp1kp1+K2kp1*(z2kp1-h2kp1);

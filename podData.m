@@ -14,6 +14,7 @@ classdef podData
         eBrakeForce
         dragCoef
         skateHeight
+        sideSensorDistance
         downSensorOffset
     end
     methods
@@ -25,6 +26,7 @@ classdef podData
             pod.height = 1;
             pod.skateHeight=0.113919;
             pod.downSensorOffset=0.0005;
+            pod.sideSensorDistance=6*2.54/100;
             pod.tensor=[   1.0/12*pod.mass*(pod.height^2 + pod.width^2) 0 0; ...
                             0 1.0/12*pod.mass*(pod.height^2 + pod.length^2) 0; ...
                             0 0 1.0/12*pod.mass*(pod.length^2 + pod.width^2)];
