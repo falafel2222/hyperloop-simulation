@@ -26,10 +26,10 @@ classdef globalData
         %%% Covariances 'n stuff %%%
         photoelectricCovariance = .0000000001
         pitotCovariance = .0000000001
-        distanceDownCovariance = .0000000001
+        distanceDownCovariance = .0001
         distanceSideCovariance = .0000000001
-        IMUAccelCovariance = .001
-        IMUGyroCovariance = .0001
+        IMUAccelCovariance = .00001
+        IMUGyroCovariance = .000001
         
     end
     methods

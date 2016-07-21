@@ -5,8 +5,8 @@ pod = podData();
 tube = tubeData();
 
 % bottomDistancePositions=zeros(3,6);
-bottomDistancePositions=[0 0 pod.length/2 pod.length/2 -pod.length/2 -pod.length/2;pod.width/2 -pod.width/2 pod.width/2 -pod.width/2 pod.width/2 -pod.width/2;-pod.height/2 -pod.height/2 -pod.height/2 -pod.height/2 -pod.height/2 -pod.height/2];
-downRailDistancePositions=zeros(3,5);
+bottomDistancePositions=[0 0 pod.length/2 pod.length/2 -pod.length/2 -pod.length/2;pod.width/2 -pod.width/2 pod.width/2 -pod.width/2 pod.width/2 -pod.width/2;pod.downSensorOffset-pod.skateHeight pod.downSensorOffset-pod.skateHeight pod.downSensorOffset-pod.skateHeight pod.downSensorOffset-pod.skateHeight pod.downSensorOffset-pod.skateHeight pod.downSensorOffset-pod.skateHeight];
+downRailDistancePositions=[pod.length/2 pod.length/3 0 -pod.length/3 -pod.length/2;0 0 0 0 0;pod.downSensorOffset  pod.downSensorOffset pod.downSensorOffset pod.downSensorOffset pod.downSensorOffset];
 sideDistancePositions=zeros(3,5);
 pitotPosition=zeros(3,1);
 topPhotoElectricPositions=zeros(3,3);
@@ -27,8 +27,8 @@ thicknessOfRail = .05;
 tubeCenterToTopOfRail=.4;
 maxBrightness=1;
 angleOfPESensitivity=10*pi/180;
-trackHeight=0;%0.72136;
-railTopHeight=tube.railHeight+tube.railTopThickness;
+trackHeight=-tube.railHeight;%0.72136;
+railTopHeight=0;
 
 stripWidth=2*0.0254;
 
@@ -227,6 +227,7 @@ if execution(1)==1
      2*(q11*q13-q10*q12) 2*(q12*q13+q10*q11) 1-2*q11^2-2*q12^2;];
     sz1=(Rot1(3,:)*p1+rz1); %+0.72136); why magic number?
     
+    
     dd1dq1=[2*q13 2*q10 -4*q11]*p1;
     dd1dq2=[-2*q10 2*q13 -4*q12]*p1;
     dd1dq3=[2*q11 2*q12 0]*p1;
@@ -248,9 +249,8 @@ if execution(1)==1
     K1kp1=Pkp1k*H1kp1'/(H1kp1*Pkp1k*H1kp1'+S1kp1);
 
 
-    h1kp1=sz1'+trackHeight; %perpendicular to track
+    h1kp1=sz1'-trackHeight; %perpendicular to track
     % h1kp1=(sz1+trackHeight)/Rot1(3,3); %normal to pod bottom
-       
     x1kp1kp1=xkp1k+K1kp1*(z1kp1-h1kp1);
     P1kp1kp1=(eye(10,10)-K1kp1*H1kp1)*Pkp1k;
     
@@ -266,7 +266,7 @@ end
 % CORRECTIVE STEP 2, downwards-pointing rail distance sensors
 if execution(2)==1
     
-    z2kp1 = sensorData(2,:);
+    z2kp1 = sensorData(1:5,2);
         
     p2=downRailDistancePositions;
     rz2=x1kp1kp1(3);
@@ -285,7 +285,7 @@ if execution(2)==1
     dd2dq3=[2*q21 2*q22 0]*p2;
     dd2dq0=[-2*q22 2*q21 0]*p2;
      
-        H2kp1=[0 0 ones(5,1) 0 0 0 dd2dq1' dd2dq2' dd2dq3' dd2dq0'];%perpendicular to track
+        H2kp1=[zeros(5,1) zeros(5,1) ones(5,1) zeros(5,1) zeros(5,1) zeros(5,1) dd2dq1' dd2dq2' dd2dq3' dd2dq0'];%perpendicular to track
 %     H2kp1=[0 0 ones(5,1)/Rot2(3,3) 0 0 0
 %     (Rot2(3,3)*dd2dq1'-((sz2+railTopHeight)*-4*q21))/((Rot2(3,3))^2) (Rot2(3,3)*dd2dq2'-((sz2+railTopHeight)*-4*q22))/((Rot2(3,3))^2) (Rot2(3,3)*dd2dq3'-((sz2+railTopHeight)*0)/((Rot2(3,3))^2) (Rot2(3,3)*dd2dq0'-((sz2+railTopHeight)*0))/((Rot2(3,3))^2)]; %normal to pod bottom
 
@@ -293,9 +293,9 @@ if execution(2)==1
     K2kp1=P1kp1kp1*H2kp1'/(H2kp1*P1kp1kp1*H2kp1'+S2kp1);
 
     
-    h2kp1=sz2+railTopHeight; %perpendicular to track
+    h2kp1=sz2'+railTopHeight; %perpendicular to track
     % h2kp1=(sz2+railTopHeight)/Rot2(3,3); %normal to pod bottom
-        
+      
     x2kp1kp1=x1kp1kp1+K2kp1*(z2kp1-h2kp1);
     P2kp1kp1=(eye(10,10)-K2kp1*H2kp1)*P1kp1kp1;
     
@@ -311,14 +311,14 @@ end
 % CORRECTIVE STEP 3, side distance sensors
 if execution(3)==1
     
-    z3kp1 = sensorData(3,:);
+    z3kp1 = sensorData(1:5,3);
     
     p3=sideDistancePositions;
     ry3=x2kp1kp1(2);
     q31=x2kp1kp1(7);  
     q32=x2kp1kp1(8);
     q33=x2kp1kp1(9);
-    q30=x2fkp1kp1(10);
+    q30=x2kp1kp1(10);
     Rot3=[1-2*q32^2-2*q33^2 2*(q31*q32-q30*q33) 2*(q31*q33+q30*q32);...
      2*(q31*q32+q30*q33) 1-2*q31^2-2*q33^2 2*(q32*q33-q30*q31);...
      2*(q31*q33-q30*q32) 2*(q32*q33+q30*q31) 1-2*q31^2-2*q32^2;];
@@ -333,14 +333,14 @@ if execution(3)==1
     dd3dq0=[2*q33 0 -2*q31]*p3;
    
     
-    H3kp1=[0 ones(5,1) 0 0 0 0 dd3dq1' dd3dq2' dd3dq3' dd3dq0'];
+    H3kp1=[zeros(5,1) ones(5,1) zeros(5,1) zeros(5,1) zeros(5,1) zeros(5,1) dd3dq1' dd3dq2' dd3dq3' dd3dq0'];
 %     H3kp1=[0 0 ones(5,1)/Rot3(2,2) 0 0 0 (Rot3(2,2)*dd3dq1'-((sy3-(thicknessOfRail/2))*-4*q31))/((Rot3(2,2))^2) (Rot3(2,2)*dd3dq2'-((sy3-(thicknessOfRail/2))*0))/((Rot3(2,2))^2) (Rot3(2,2)*dd3dq3'-((sy3-(thicknessOfRail/2))*-4*q33))/((Rot3(2,2))^2) (Rot3(2,2)*dd3dq0'-((sy3-(thicknessOfRail/2))*0))/((Rot3(2,2))^2)]; %normal to pod side
 
     S3kp1=globals.distanceSideCovariance*eye(5); %Experimentally determined
     K3kp1=P2kp1kp1*H3kp1'/(H3kp1*P2kp1kp1*H3kp1'+S3kp1);
 
     
-    h3kp1=sy3-(thicknessOfRail/2);%perpendicular to rail side
+    h3kp1=sy3'-(thicknessOfRail/2);%perpendicular to rail side
     % h3kp1=(sy3-(thicknessOfRail/2))/Rot3(2,2); %normal to pod side
         
     x3kp1kp1=x2kp1kp1+K3kp1*(z3kp1-h3kp1);
@@ -357,7 +357,7 @@ end
 % CORRECTIVE STEP 4, PITOT TUBE
 if execution(4)==1
     
-    z4kp1 = sensorData(4,:);
+    z4kp1 = sensorData(1,4);
     
     p4=pitotPosition;
     b4=pitotDirection;
@@ -420,7 +420,7 @@ end
 % CORRECTIVE STEP 5, 12 o'clock Photoelectric
 if execution(5)==1
     % getting sensor data
-    z5kp1 = sensorData(5,:);
+    z5kp1 = sensorData(1:3,5);
     
     p5=topPhotoelectricPosition;
     b5=topPhotoelectricDirection;
@@ -532,7 +532,7 @@ if execution(5)==1
     df5dq0=(maxBrightness./stripThickness).*sum(((stripTrailingEdgeDistance>(-detectionRad5)./bx5)- (stripLeadingEdgeDistance>(-detectionRad5)./bx5).*(dalpha5dq0+(bx5*ddetRad5dq0-detectionRad5*dbx5dq0)/(bx5^2)) - ((stripTrailingEdgeDistance>(detectionRad5)./bx5)-(stripLeadingEdgeDistance>(detectionRad5)./bx5)).*(dalpha5dq0-(bx5*ddetRad5dq0-detectionRad5*dbx5dq0)/(bx5^2))));
     
     
-    H5kp1=[df5drx df5dry df5drz 0 0 0 df5dq1 df5dq2 df5dq3 df5dq0];
+    H5kp1=[df5drx df5dry df5drz zeros(3,1) zeros(3,1) zeros(3,1) df5dq1 df5dq2 df5dq3 df5dq0];
     S5kp1=VerticalPECovariance; %Experimentally determined
     K5kp1=P4kp1kp1*H5kp1'/(H5kp1*P4kp1kp1*H5kp1'+S5kp1); %Kalman Gain
 
@@ -556,7 +556,7 @@ end
 % CORRECTIVE STEP 6, 10:30 Photoelectric
 if execution(6)==1
     % getting sensor data
-    z6kp1 = sensorData(6,:);
+    z6kp1 = sensorData(1:3,6);
     
     % Getting terms from the previous state prediction to use in calculations
     rx6=x5kp1kp1(1);
@@ -665,7 +665,7 @@ if execution(6)==1
     df6dq0=(maxBrightness./stripThickness).*sum(((stripTrailingEdgeDistance>(-detectionRad6)./bx6)- (stripLeadingEdgeDistance>(-detectionRad6)./bx6).*(dalpha6dq0+(bx6*ddetRad6dq0-detectionRad6*dbx6dq0)/(bx6^2)) - ((stripTrailingEdgeDistance>(detectionRad6)./bx6)-(stripLeadingEdgeDistance>(detectionRad6)./bx6)).*(dalpha6dq0-(bx6*ddetRad6dq0-detectionRad6*dbx6dq0)/(bx6^2))));
     
     
-    H6kp1=[df6drx df6dry df6drz 0 0 0 df6dq1 df6dq2 df6dq3 df6dq0];
+    H6kp1=[df6drx df6dry df6drz  zeros(3,1) zeros(3,1) zeros(3,1) df6dq1 df6dq2 df6dq3 df6dq0];
     S6kp1=at1030PECovariance; %Experimentally determined
     K6kp1=P5kp1kp1*H6kp1'/(H6kp1*P5kp1kp1*H6kp1'+S6kp1); %Kalman Gain
 
@@ -689,7 +689,7 @@ end
 % CORRECTIVE STEP 7, 1:30 Photoelectric
 if execution(7)==1
     % getting sensor data
-    z7kp1 = sensorData(7,:);
+    z7kp1 = sensorData(1:3,7);
     
     % Getting terms from the previous state prediction to use in calculations
     rx7=x6kp1kp1(1);
@@ -797,7 +797,7 @@ if execution(7)==1
     df7dq0=(maxBrightness./stripThickness).*sum(((stripTrailingEdgeDistance>(-detectionRad7)./bx7)- (stripLeadingEdgeDistance>(-detectionRad7)./bx7).*(dalpha7dq0+(bx7*ddetRad7dq0-detectionRad7*dbx7dq0)/(bx7^2)) - ((stripTrailingEdgeDistance>(detectionRad7)./bx7)-(stripLeadingEdgeDistance>(detectionRad7)./bx7)).*(dalpha7dq0-(bx7*ddetRad7dq0-detectionRad7*dbx7dq0)/(bx7^2))));
     
     
-    H7kp1=[df7drx df7dry df7drz 0 0 0 df7dq1 df7dq2 df7dq3 df7dq0];
+    H7kp1=[df7drx df7dry df7drz  zeros(3,1) zeros(3,1) zeros(3,1) df7dq1 df7dq2 df7dq3 df7dq0];
     S7kp1=at130PECovariance; %Experimentally determined
     K7kp1=P6kp1kp1*H7kp1'/(H7kp1*P6kp1kp1*H7kp1'+S7kp1); %Kalman Gain
 

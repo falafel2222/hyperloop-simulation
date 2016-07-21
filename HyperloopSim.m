@@ -41,6 +41,7 @@ function [] = HyperloopSim()
     % state is a 10x1 matrix of [position velocity quaternions]
     state = [transPos(:,1)' transVel(:,1)' q(:,1)']';
     kalmanHistory = zeros(10,globals.numSteps/kalmanFreq);
+    kalmanHistory(:,1)=state;
     
     
     eBrakesActuated = false;    
@@ -197,25 +198,32 @@ function [] = HyperloopSim()
             pitch = asin(2*(q0*q2 - q3*q1));
             rolls(n/kalmanFreq) = roll;
             % distance sensors
-            distance1Pos = transPos(:,n)*ones(1,6)+[0 0 pod.length/2 pod.length/2 -pod.length/2 -pod.length/2;pod.width/2 -pod.width/2 pod.width/2 -pod.width/2 pod.width/2 -pod.width/2;-pod.height/2 -pod.height/2 -pod.height/2 -pod.height/2 -pod.height/2 -pod.height/2];
+            distance1Pos = transPos(:,n)*ones(1,6)+rotMatrix*[0 0 pod.length/2 pod.length/2 -pod.length/2 -pod.length/2;pod.width/2 -pod.width/2 pod.width/2 -pod.width/2 pod.width/2 -pod.width/2;pod.downSensorOffset-pod.skateHeight pod.downSensorOffset-pod.skateHeight pod.downSensorOffset-pod.skateHeight pod.downSensorOffset-pod.skateHeight pod.downSensorOffset-pod.skateHeight pod.downSensorOffset-pod.skateHeight];
             for i=1:6
-                [~, scanner1dist(i)] = DistanceFinder(rotMatrix*distance1Pos(:,i)); 
+                [~, scanner1dist(i)] = DistanceFinder(distance1Pos(:,i)); 
             end
 
-            distance2Pos = [0; 0; 0];
-            [~, scanner2dist] = DistanceFinder(rotMatrix*distance2Pos); 
+            distance2Pos = transPos(:,n)*ones(1,5)+rotMatrix*[pod.length/2 pod.length/3 0 -pod.length/3 -pod.length/2;0 0 0 0 0;pod.downSensorOffset  pod.downSensorOffset pod.downSensorOffset pod.downSensorOffset pod.downSensorOffset];
+            for i=1:5
+                [~, scanner2dist(i)] = DistanceFinder(distance2Pos(:,i)); 
+            end
+
+            distance3Pos = transPos(:,n)*ones(1,5)+rotMatrix*[pod.length/2 pod.length/3 0 -pod.length/3 -pod.length/2;0 0 0 0 0;pod.downSensorOffset  pod.downSensorOffset pod.downSensorOffset pod.downSensorOffset pod.downSensorOffset];
+            for i=1:5
+                [~, scanner3dist(i)] = InsideDistance(distance3Pos(:,i)); 
+            end
             
-            distance3Pos = [0; 0; 0];
-            [~, scanner3dist] = InsideDistance(rotMatrix*distance3Pos);
 
             
             
             
-            sensorData = [[scanner1dist'] [0;0;0;0;0;0;] [0;0;0;0;0;0;] [0;0;0;0;0;0;] [0;0;0;0;0;0;] [0;0;0;0;0;0;] [0;0;0;0;0;0;]];
+            sensorData = [[scanner1dist'] [scanner2dist'; 0;] [scanner3dist'; 0;] [0;0;0;0;0;0;] [0;0;0;0;0;0;] [0;0;0;0;0;0;] [0;0;0;0;0;0;]];
             execution =  [0 0 0 0 0 0 0];
 
             if mod(n,kalmanFreq*5) == 0
                 execution(1) = 1;
+                execution(2) = 1;
+                execution(3) = 1;
             end
             
             IMUData = [transAcc(:,n)' rotVel(:,n)']';
@@ -224,7 +232,7 @@ function [] = HyperloopSim()
             % add random noise
             IMUData = IMUData + [sqrt(globals.IMUAccelCovariance)*randn(1).*IMUData(1:3); sqrt(globals.IMUGyroCovariance)*randn(1).*IMUData(4:6);];
 %             
-            sensorData = sensorData + [sqrt(globals.distanceDownCovariance)*randn(1).*sensorData(:,1) [0;0;0;0;0;0;] [0;0;0;0;0;0;] [0;0;0;0;0;0;] [0;0;0;0;0;0;] [0;0;0;0;0;0;] [0;0;0;0;0;0;] ];
+            sensorData = sensorData + [sqrt(globals.distanceDownCovariance)*randn(1).*sensorData(:,1) sqrt(globals.distanceDownCovariance)*randn(1).*sensorData(:,2) sqrt(globals.distanceSideCovariance)*randn(1).*sensorData(:,3) [0;0;0;0;0;0;] [0;0;0;0;0;0;] [0;0;0;0;0;0;] [0;0;0;0;0;0;] ];
             
 %             if (n/kalmanFreq > 1)
             IMUData = IMUData + [rotMatrix\[0; 0; globals.gravity]; 0;0 ;0;];
@@ -266,7 +274,14 @@ function [] = HyperloopSim()
             
 
             [state, covariance] = KalmanFilterHyperloop(state, covariance, IMUData, sensorData, execution, n/kalmanFreq);
-
+%              if mod(n,kalmanFreq*5) == 0
+%                 distance1Pos
+%                 transPos(:,n)
+%                 state
+%                 noisyKalmanPosIMU
+%                 noisyKalmanPosIMU+pod.height/2
+%             end
+            
             kalmanHistory(:,n/kalmanFreq+1) = state;
 %             disp('---------------------')
 %             disp(n/kalmanFreq)
@@ -307,19 +322,53 @@ function [] = HyperloopSim()
     display(size(kalmanHistory(3,:)))
     display(size(transPos(3,:)))
     figure;
+    subplot(3,1,1)
+    plot(kalmanHistory(1,:))
+    hold all
+    plot(downsample(transPos(1,:),kalmanFreq));
+    plot(noisyKalmanPosIMU(1,:));
+    legend('Kalman','Physical','IMU')
+    title('X-position')
+    hold off
+    subplot(3,1,2)
+    plot(kalmanHistory(2,:))
+    hold all
+    plot(downsample(transPos(2,:),kalmanFreq));
+    plot(noisyKalmanPosIMU(2,:));
+    legend('Kalman','Physical','IMU')
+    title('Y-position')
+    hold off
+    subplot(3,1,3)
     plot(kalmanHistory(3,:))
     hold all
     plot(downsample(transPos(3,:),kalmanFreq));
     plot(noisyKalmanPosIMU(3,:));
     legend('Kalman','Physical','IMU')
+    title('Z-position')
     hold off
     figure;
+    subplot(3,1,3)
     hold all
     IMUvReal=noisyKalmanVelIMU(3,1:end-1)-downsample(transVel(3,:),kalmanFreq);
-
     plot(noisyKalmanVelIMU(3,:));
     plot(downsample(transVel(3,:),kalmanFreq));
     plot(kalmanHistory(6,:))
+    title('Z-velocity')
+    subplot(3,1,1)
+    hold all
+%     IMUvReal=noisyKalmanVelIMU(3,1:end-1)-downsample(transVel(3,:),kalmanFreq);
+    plot(noisyKalmanVelIMU(1,:));
+    plot(downsample(transVel(1,:),kalmanFreq));
+    plot(kalmanHistory(4,:))
+    title('X-velocity')
+    subplot(3,1,2)
+    hold all
+%     IMUvReal=noisyKalmanVelIMU(3,1:end-1)-downsample(transVel(3,:),kalmanFreq);
+    plot(noisyKalmanVelIMU(2,:));
+    plot(downsample(transVel(2,:),kalmanFreq));
+    plot(kalmanHistory(5,:))
+    title('Y-velocity')
+    
     legend('IMU','Physical','Kalman')
     hold off
     

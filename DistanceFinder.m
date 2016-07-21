@@ -5,13 +5,14 @@ function [radialDistance, vertDist] = DistanceFinder(point)
     % constants of the tube
     tubeRadiusM=0.889;
     distToFlatM=0.72136;
+    distToTrackM=distToFlatM-.127 + .0127;
     alphaAngle=3*pi/2-acos(distToFlatM/tubeRadiusM);
     betaAngle=3*pi/2+acos(distToFlatM/tubeRadiusM);
     
     % finding radius of the tube at any given theta
     zVal=point(3);
     yVal=point(2);
-    theta=atan2(zVal,yVal);
+    theta=atan2(zVal-distToTrackM,-yVal);
     
     if theta<0
        theta=(2*pi)+theta; 
@@ -24,11 +25,11 @@ function [radialDistance, vertDist] = DistanceFinder(point)
         radiusAtTheta=tubeRadiusM;
     end
     
-    radiusOfPoint=sqrt(zVal^2+yVal^2);
+    radiusOfPoint=sqrt((zVal-distToTrackM)^2+yVal^2);
 
         
     radialDistance=radiusAtTheta-radiusOfPoint;
-    vertDist=distToFlatM+zVal;
+    vertDist=distToFlatM+zVal-distToTrackM;
 
     
     
