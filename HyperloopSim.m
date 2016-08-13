@@ -59,6 +59,9 @@
     noisyKalmanRotIMU=[1 0 0; 0 1 0; 0 0 1];
     noisyKalmanQIMU=zeros(4,globals.numSteps/kalmanFreq+1);
     noisyKalmanQIMU(:,1)=[0.000001;0.000001;0.000001; sqrt(1-3*.000001^2)];
+    gyroData= zeros(3,globals.numSteps/kalmanFreq+1);
+    noisyGyroData= zeros(3,globals.numSteps/kalmanFreq+1);
+    qdotIMU= zeros(4,globals.numSteps/kalmanFreq+1);
     % pod state variables
     transPos = zeros(3, globals.numSteps);
     transVel = zeros(3, globals.numSteps);
@@ -71,6 +74,7 @@
 
     q=zeros(4, globals.numSteps);
     q(:,1)=[0.000001;0.000001;0.000001; sqrt(1-3*.000001^2)];
+    qdotSave=zeros(4, globals.numSteps);
 
     
     %%%% For Kalman Filter %%%%    
@@ -193,6 +197,7 @@
                     -rotVel(1,n) -rotVel(2,n) -rotVel(3,n) 0;];
 
         qdot = 0.5*OmegaMatrix*q(:,n-1);
+        qdotSave(:,n)=qdot;
                 
         qn=q(:,n-1)+globals.timestep*qdot;
         normQuat=sqrt(sum(qn.^2));
@@ -277,10 +282,14 @@
 %             disp('imu')
 %             disp(IMUData)
             % add random noise
+            gyroData(:,n/kalmanFreq)=IMUData(4:6);
+  
 
             IMUData = IMUData +...
                 [sqrt(globals.IMUAccelSIMCovConst+globals.IMUAccelSIMCovLin.*abs(IMUData(1:3)-globals.IMUAccelSIMCovZero)).*randn(3,1);...
-                sqrt(globals.IMUGyroSIMCovConst+globals.IMUGyroSIMCovLin.*abs(IMUData(4:6)-globals.IMUGyroSIMCovZero).*randn(3,1));];
+                sqrt(globals.IMUGyroSIMCovConst+globals.IMUGyroSIMCovLin.*abs(IMUData(4:6)-globals.IMUGyroSIMCovZero)).*randn(3,1);];
+            
+            noisyGyroData(:,n/kalmanFreq)=IMUData(4:6);
 %             
             sensorData = sensorData + [sqrt(globals.distDownSIMCovConst+globals.distDownSIMCovLin.*abs(scanner1dist'-globals.distDownSIMCovZero)).*randn(6,1)...
                 [sqrt(globals.distDownRailSIMCovConst+globals.distDownRailSIMCovLin.*abs(scanner2dist'-globals.distDownRailSIMCovZero));NaN].*randn(6,1)...
@@ -310,6 +319,9 @@
             
             noisyKalmanVelIMU(:,n/kalmanFreq+1) = noisyKalmanVelIMU(:,n/kalmanFreq) + globals.kalmanTimestep *(noisyKalmanRotIMU*(IMUData(1:3))-[0;0;globals.gravity]);
             noisyKalmanPosIMU(:,n/kalmanFreq+1) = noisyKalmanPosIMU(:,n/kalmanFreq) + globals.kalmanTimestep*noisyKalmanVelIMU(:,n/kalmanFreq);
+            
+            qdotIMU(:,n/kalmanFreq)=0.5*noisyKalmanOmegaIMU*noisyKalmanQIMU(:,n/kalmanFreq);
+     
 
             noisyKalmanQIMU(:,n/kalmanFreq+1)=noisyKalmanQIMU(:,n/kalmanFreq)+0.5*globals.kalmanTimestep*noisyKalmanOmegaIMU*noisyKalmanQIMU(:,n/kalmanFreq);
             
@@ -334,11 +346,11 @@
                     if rand(1)>0.5
                         sensorFailState(end+1)=1;
                         sensorData(sensorNum(end),sensorType(end))=globals.sensorMaxs(sensorNum(end),sensorType(end));
-                        fprintf('*****Sensor %d of type %d has failed, reading high.********\n',sensorNum(end),sensorType(end))
+                        fprintf('*****Sensor %d of type %d has failed at %d milliseconds, reading high.********\n',sensorNum(end),sensorType(end),n*globals.timestep*1000)
                     else
                         sensorFailState(end+1)=0;
                         sensorData(sensorNum(end),sensorType(end))=globals.sensorMins(sensorNum(end),sensorType(end));
-                        fprintf('*****Sensor %d of type %d has failed, reading low.********\n',sensorNum(end),sensorType(end))
+                        fprintf('*****Sensor %d of type %d has failed at %d milliseconds, reading low.********\n',sensorNum(end),sensorType(end),n*globals.timestep*1000)
                     end
                 end
                 if globals.failurePersist && failed
@@ -457,6 +469,38 @@
     legend('Kalman','Physical','IMU')
     hold off
     
+    figure;
+    subplot(4,1,1)
+    hold all
+    plot(kalmanHistory(7,:));
+    plot(downsample(q(1,:),kalmanFreq),':');
+    plot(noisyKalmanQIMU(1,:),':');
+    title('q1')
+    subplot(4,1,2)
+    hold all
+%     IMUvReal=noisyKalmanVelIMU(3,1:end-1)-downsample(transVel(3,:),kalman
+%     Freq);
+    plot(kalmanHistory(8,:));
+    plot(downsample(q(2,:),kalmanFreq),':');
+    plot(noisyKalmanQIMU(2,:),':');
+    title('q2')
+    subplot(4,1,3)
+    hold all
+%     IMUvReal=noisyKalmanVelIMU(3,1:end-1)-downsample(transVel(3,:),kalmanFreq);
+
+  plot(kalmanHistory(9,:));
+    plot(downsample(q(3,:),kalmanFreq),':');
+    plot(noisyKalmanQIMU(3,:),':');
+    title('q3')
+    subplot(4,1,4)
+    hold all
+  plot(kalmanHistory(10,:));
+    plot(downsample(q(4,:),kalmanFreq),':');
+    plot(noisyKalmanQIMU(4,:),':');
+    title('q0')
+    
+    legend('Kalman','Physical','IMU')
+    hold off
 
    
 

@@ -5,7 +5,7 @@ classdef globalData
         %%% TIMING %%%
         timestep = .0001 %s
         kalmanTimestep = .001 %s
-        runtime = 5 %s
+        runtime = 3 %s
         numSteps
 
         %%% SIMULATION OPTIONS %%%
@@ -100,13 +100,13 @@ classdef globalData
       
        
         
-        peTopMin=1*ones(3,1); %these are the values that the sensors would report if they returned the lower rail voltage
-        peLeftMin=1*ones(3,1);
-        peRightMin=1*ones(3,1);
-        pitotMin=50;
-        distDownMin=0.01*ones(6,1);
-        distDownRailMin=0.01*ones(5,1);
-        distSideMin=0.3*ones(5,1);
+        peTopMin=0*ones(3,1); %these are the values that the sensors would report if they returned the lower rail voltage
+        peLeftMin=0*ones(3,1);
+        peRightMin=0*ones(3,1);
+        pitotMin=-5;
+        distDownMin=0*ones(6,1);
+        distDownRailMin=0*ones(5,1);
+        distSideMin=0*ones(5,1);
         
         sensorMaxs
         sensorMins

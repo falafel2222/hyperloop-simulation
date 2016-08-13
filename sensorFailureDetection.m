@@ -16,7 +16,7 @@ peLeft=peLeft(~isnan(peLeft));
 peRight=peRight(~isnan(peRight));
 sensorUse=nan(6,7);
 
-distDownUse=find((distDown>globals.distDownMin).*(distDown<globals.distDownMax).*(~isnan(distDown)));
+distDownUse=find((distDown>globals.distDownMin).*(distDown<globals.distDownMax));
 distDownRailUse=find((distDownRail>globals.distDownRailMin).*(distDownRail<globals.distDownRailMax).*(~isnan(distDownRail)));
 distSideUse=find((distSide>globals.distSideMin).*(distSide<globals.distSideMax).*(~isnan(distSide)));
 pitotUse=find((pitot>globals.pitotMin).*(pitot<globals.pitotMax).*(~isnan(pitot)));

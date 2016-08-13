@@ -179,8 +179,8 @@ Wk=zeros(10,10);
 
 %this needs to be determined based on IMU error
 
- Qk = [diag(globals.IMUAccelSIMCovConst+globals.IMUAccelSIMCovLin.*abs(zeros(3,1)-globals.IMUAccelSIMCovZero)) zeros(3,3);...
-                zeros(3,3)  diag(globals.IMUGyroSIMCovConst+globals.IMUGyroSIMCovLin.*abs(zeros(3,1)-globals.IMUGyroSIMCovZero).*randn(3,1));];
+ Qk = [diag((globals.IMUAccelSIMCovConst+globals.IMUAccelSIMCovLin.*abs(zeros(3,1)-globals.IMUAccelSIMCovZero)).*randn(3,1)) zeros(3,3);...
+                zeros(3,3)  diag((globals.IMUGyroSIMCovConst+globals.IMUGyroSIMCovLin.*abs(zeros(3,1)-globals.IMUGyroSIMCovZero)).*randn(3,1));];
 
 
 
@@ -219,7 +219,7 @@ if execution(1)==1 && numberUsed(1)~=0
     distDownUse=sensorUse(1:numberUsed(1),1);
     
     z1kp1 = sensorData((distDownUse),1);
-    p1=pod.bottomDistancePositions(distDownUse);
+    p1=pod.bottomDistancePositions(:,distDownUse);
     rz1=xkp1k(3);
     q11=xkp1k(7);  
     q12=xkp1k(8);
@@ -235,7 +235,6 @@ if execution(1)==1 && numberUsed(1)~=0
     dd1dq2=[-2*q10 2*q13 -4*q12]*p1;
     dd1dq3=[2*q11 2*q12 0]*p1;
     dd1dq0=[-2*q12 2*q11 0]*p1;
- 
     
     H1kp1=[zeros(numberUsed(1),1) zeros(numberUsed(1),1) ones(numberUsed(1),1) zeros(numberUsed(1),1) zeros(numberUsed(1),1) zeros(numberUsed(1),1) dd1dq1' dd1dq2' dd1dq3' dd1dq0'];%perpendicular to track
 %     H1kp1=[0 0 ones(6,1)/Rot1(3,3) 0 0 0
@@ -273,7 +272,7 @@ if execution(2)==1 && numberUsed(2)~=0
     
     z2kp1 = sensorData((distDownRailUse),2);
         
-    p2=pod.downRailDistancePositions(distDownRailUse);
+    p2=pod.downRailDistancePositions(:,distDownRailUse);
     rz2=x1kp1kp1(3);
     q21=x1kp1kp1(7);  
     q22=x1kp1kp1(8);
@@ -320,7 +319,7 @@ if execution(3)==1 && numberUsed(3)~=0
     z3kp1 = sensorData((distSideUse),3);
     
     
-    p3=pod.sideDistancePositions(distSideUse);
+    p3=pod.sideDistancePositions(:,distSideUse);
     ry3=x2kp1kp1(2);
     q31=x2kp1kp1(7);  
     q32=x2kp1kp1(8);
