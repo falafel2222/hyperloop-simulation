@@ -9,8 +9,12 @@ classdef globalData
         numSteps
 
         %%% SIMULATION OPTIONS %%%
-        randomNoise=true;
-        noiseModifier=0.001;
+        randomForceNoise=true;
+        randomIMUNoise=true;
+        randomSensorNoise=true;
+        noiseModifierConst=0.005*ones(27,1);
+        noiseModifierLin=0.002*ones(27,1);
+        noiseModifierZero=[0*ones(26,1); -9.81];
         sensorFailure=true;
         failurePersist=true;
         failureRate=0.001;
@@ -31,9 +35,9 @@ classdef globalData
         peLeftCovConst = .0000000001*ones(3,1);
         peRightCovConst = .0000000001*ones(3,1);
         pitotCovConst = .001
-        distDownCovConst = .0001*ones(6,1);
-        distDownRailCovConst = .0001*ones(5,1);
-        distSideCovConst = .00001*ones(5,1);
+        distDownCovConst = .00001*ones(6,1);
+        distDownRailCovConst = .00001*ones(5,1);
+        distSideCovConst = .0001*ones(5,1);
         IMUAccelCovConst = .00001*ones(3,1);
         IMUGyroCovConst = .000001*ones(3,1);
         
@@ -58,7 +62,7 @@ classdef globalData
         IMUGyroCovZero = 0*ones(3,1);
         
         
-        correctCovariance = 1 %if using the covariances above to generate the noise as well as in the Kalman Filter. Else it uses covariances below.
+        correctCovariance = true %if using the covariances above to generate the noise as well as in the Kalman Filter. Else it uses covariances below.
         
         peTopSIMCovConst = .0000000001*ones(3,1);
         peLeftSIMCovConst = .0000000001*ones(3,1);
