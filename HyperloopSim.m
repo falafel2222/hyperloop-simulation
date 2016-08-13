@@ -1,13 +1,50 @@
 % Hyperloop pod simulation for the OpenLoop Team
 % Created by Alex Goldstein and Adam Shaw
 
-function [] = HyperloopSim()
+% function [] = HyperloopSim()
     disp('Simulation Started')
     
         
     globals = globalData();
     pod = podData();
     tube = tubeData();
+    
+    failed=false;
+    sensorType=[];
+    sensorNum=[];
+    sensorFailState=[];
+    
+    if globals.correctCovariance
+         globals.peTopSIMCovConst = globals.peTopSIMCovConst;
+         globals.peLeftSIMCovConst = globals.peLeftSIMCovConst;
+         globals.peRightSIMCovConst = globals.peRightSIMCovConst;
+         globals.pitotSIMCovConst = globals.pitotSIMCovConst;
+         globals.distDownSIMCovConst = globals.distDownSIMCovConst;
+         globals.distDownRailSIMCovConst = globals.distDownRailSIMCovConst;
+         globals.distSideSIMCovConst = globals.distSideSIMCovConst;
+         globals.IMUAccelSIMCovConst = globals.IMUAccelSIMCovConst;
+         globals.IMUGyroSIMCovConst = globals.IMUGyroSIMCovConst;
+        
+         globals.peTopSIMCovLin = globals.peTopSIMCovLin;
+         globals.peLeftSIMCovLin = globals.peLeftSIMCovLin;
+         globals.peRightSIMCovLin = globals.peRightSIMCovLin;
+         globals.pitotSIMCovLin = globals.pitotSIMCovLin;
+         globals.distDownSIMCovLin = globals.distDownSIMCovLin;
+         globals.distDownRailSIMCovLin = globals.distDownRailSIMCovLin;
+         globals.distSideSIMCovLin = globals.distSideSIMCovLin;
+         globals.IMUAccelSIMCovLin = globals.IMUAccelSIMCovLin;
+         globals.IMUGyroSIMCovLin = globals.IMUGyroSIMCovLin;
+               
+         globals.peTopSIMCovZero = globals.peTopSIMCovZero;
+         globals.peLeftSIMCovZero = globals.peLeftSIMCovZero;
+         globals.peRightSIMCovZero = globals.peRightSIMCovZero;
+         globals.pitotSIMCovZero = globals.pitotSIMCovZero;
+         globals.distDownSIMCovZero = globals.distDownSIMCovZero;
+         globals.distDownRailSIMCovZero = globals.distDownRailSIMCovZero;
+         globals.distSideSIMCovZero = globals.distSideSIMCovZero;
+         globals.IMUAccelSIMCovZero = globals.IMUAccelSIMCovZero;
+         globals.IMUGyroSIMCovZero = globals.IMUGyroSIMCovZero;
+    end
     
     kalmanFreq = globals.kalmanTimestep/globals.timestep;
 
@@ -198,24 +235,32 @@ function [] = HyperloopSim()
             pitch = asin(2*(q0*q2 - q3*q1));
             rolls(n/kalmanFreq) = roll;
             % distance sensors
-            distance1Pos = transPos(:,n)*ones(1,6)+rotMatrix*[0 0 pod.length/2 pod.length/2 -pod.length/2 -pod.length/2;pod.width/2 -pod.width/2 pod.width/2 -pod.width/2 pod.width/2 -pod.width/2;pod.downSensorOffset-pod.skateHeight pod.downSensorOffset-pod.skateHeight pod.downSensorOffset-pod.skateHeight pod.downSensorOffset-pod.skateHeight pod.downSensorOffset-pod.skateHeight pod.downSensorOffset-pod.skateHeight];
+            distance1Pos = transPos(:,n)*ones(1,6)+rotMatrix*pod.bottomDistancePositions;
             for i=1:6
                 [~, scanner1dist(i)] = DistanceFinder(distance1Pos(:,i)); 
             end
 
-            distance2Pos = transPos(:,n)*ones(1,5)+rotMatrix*[pod.length/2 pod.length/3 0 -pod.length/3 -pod.length/2;0 0 0 0 0;pod.downSensorOffset  pod.downSensorOffset pod.downSensorOffset pod.downSensorOffset pod.downSensorOffset];
+            distance2Pos = transPos(:,n)*ones(1,5)+rotMatrix*pod.downRailDistancePositions;
             for i=1:5
                 [scanner2dist(i)] = TrackDistanceFinder(distance2Pos(:,i)); 
             end
 
-            distance3Pos = transPos(:,n)*ones(1,5)+rotMatrix*[pod.length/2 pod.length/3 0 -pod.length/3 -pod.length/2;pod.sideSensorDistance pod.sideSensorDistance pod.sideSensorDistance pod.sideSensorDistance pod.sideSensorDistance;-pod.skateHeight/2 -pod.skateHeight/2 -pod.skateHeight/2 -pod.skateHeight/2 -pod.skateHeight/2];
+            distance3Pos = transPos(:,n)*ones(1,5)+rotMatrix*pod.sideDistancePositions;
             for i=1:5
                 [~, scanner3dist(i)] = InsideDistance(distance3Pos(:,i)); 
             end
             
+            pitotRead=0.5*globals.airDensity*(dot(transVel(:,n),rotMatrix*pod.pitotDirection))^2;
+            
 
             
-            sensorData = [[scanner1dist'] [scanner2dist'; 0;] [scanner3dist'; 0;] [0;0;0;0;0;0;] [0;0;0;0;0;0;] [0;0;0;0;0;0;] [0;0;0;0;0;0;]];
+            sensorData = [[scanner1dist']...
+                [scanner2dist'; NaN;]...
+                [scanner3dist'; NaN;]...
+                [pitotRead;nan(5,1)]...
+                [zeros(3,1); nan(3,1)]...
+                [zeros(3,1); nan(3,1)]...
+                [zeros(3,1); nan(3,1)]];
             execution =  [0 0 0 0 0 0 0];
 
             if mod(n,kalmanFreq*5) == 0
@@ -224,13 +269,26 @@ function [] = HyperloopSim()
                 execution(3) = 1;
             end
             
+            if mod(n,kalmanFreq*8) == 0
+                execution(4) = 1;
+            end   
+            
             IMUData = [transAcc(:,n)' rotVel(:,n)']';
 %             disp('imu')
 %             disp(IMUData)
             % add random noise
-            IMUData = IMUData + [sqrt(globals.IMUAccelCovariance)*randn(1).*IMUData(1:3); sqrt(globals.IMUGyroCovariance)*randn(1).*IMUData(4:6);];
+
+            IMUData = IMUData +...
+                [sqrt(globals.IMUAccelSIMCovConst+globals.IMUAccelSIMCovLin.*abs(IMUData(1:3)-globals.IMUAccelSIMCovZero)).*randn(3,1);...
+                sqrt(globals.IMUGyroSIMCovConst+globals.IMUGyroSIMCovLin.*abs(IMUData(4:6)-globals.IMUGyroSIMCovZero).*randn(3,1));];
 %             
-            sensorData = sensorData + [sqrt(globals.distanceDownCovariance)*randn(1).*sensorData(:,1) sqrt(globals.distanceDownCovariance)*randn(1).*sensorData(:,2) sqrt(globals.distanceSideCovariance)*randn(1).*sensorData(:,3) [0;0;0;0;0;0;] [0;0;0;0;0;0;] [0;0;0;0;0;0;] [0;0;0;0;0;0;] ];
+            sensorData = sensorData + [sqrt(globals.distDownSIMCovConst+globals.distDownSIMCovLin.*abs(scanner1dist'-globals.distDownSIMCovZero)).*randn(6,1)...
+                [sqrt(globals.distDownRailSIMCovConst+globals.distDownRailSIMCovLin.*abs(scanner2dist'-globals.distDownRailSIMCovZero));NaN].*randn(6,1)...
+                [sqrt(globals.distSideSIMCovConst+globals.distSideSIMCovLin.*abs(scanner3dist'-globals.distSideSIMCovZero));NaN].*randn(6,1)...
+                [sqrt(globals.pitotSIMCovConst+globals.pitotSIMCovLin.*abs(pitotRead-globals.pitotSIMCovZero)); nan(5,1)].*randn(6,1)...
+                [zeros(3,1); nan(3,1)]...
+                [zeros(3,1); nan(3,1)]...
+                 [zeros(3,1); nan(3,1)]];
             
 %             if (n/kalmanFreq > 1)
             IMUData = IMUData + [rotMatrix\[0; 0; globals.gravity]; 0;0 ;0;];
@@ -267,11 +325,38 @@ function [] = HyperloopSim()
 %                 disp(noisyKalmanPosIMU(:,n/kalmanFreq));                
 %                 scannerDistances(n/kalmanFreq) = scanner1dist;
 %             disp(scanner1dist);
-            
+            if globals.sensorFailure
+                if rand(1)<globals.failureRate
+                    failed=true;
+                    sensorType(end+1)=ceil(7*rand(1));
+                    sensorList=sensorData(:,sensorType(end));
+                    sensorNum(end+1)=ceil(rand(1)*length(find(~isnan(sensorList))));
+                    if rand(1)>0.5
+                        sensorFailState(end+1)=1;
+                        sensorData(sensorNum(end),sensorType(end))=globals.sensorMaxs(sensorNum(end),sensorType(end));
+                        fprintf('*****Sensor %d of type %d has failed, reading high.********\n',sensorNum(end),sensorType(end))
+                    else
+                        sensorFailState(end+1)=0;
+                        sensorData(sensorNum(end),sensorType(end))=globals.sensorMins(sensorNum(end),sensorType(end));
+                        fprintf('*****Sensor %d of type %d has failed, reading low.********\n',sensorNum(end),sensorType(end))
+                    end
+                end
+                if globals.failurePersist && failed
+                    for i=1:length(sensorType)
+                       if sensorFailState(i)==1
+                           sensorData(sensorNum(i),sensorType(i))=globals.sensorMaxs(sensorNum(i),sensorType(i));
+                       elseif sensorFailState(i)==0
+                           sensorData(sensorNum(i),sensorType(i))=globals.sensorMins(sensorNum(i),sensorType(i));
+                       else
+                           fprintf('**********************SOMETHING WRONG**********************\n')
+                       end
+                    end
+                end
+            end
 
+            [sensorUse,numberUsed] = sensorFailureDetection(sensorData,globals,pod,tube);
             
-
-            [state, covariance] = KalmanFilterHyperloop(state, covariance, IMUData, sensorData, execution, n/kalmanFreq);
+            [state, covariance] = KalmanFilterHyperloop(state, covariance, IMUData, sensorData, execution, sensorUse,numberUsed, n/kalmanFreq,globals,pod,tube);
 %              if mod(n,kalmanFreq*5) == 0
 %                 distance1Pos
 %                 transPos(:,n)
@@ -323,24 +408,24 @@ function [] = HyperloopSim()
     subplot(3,1,1)
     plot(kalmanHistory(1,:))
     hold all
-    plot(downsample(transPos(1,:),kalmanFreq));
-    plot(noisyKalmanPosIMU(1,:));
+    plot(downsample(transPos(1,:),kalmanFreq),':');
+    plot(noisyKalmanPosIMU(1,:),':');
     legend('Kalman','Physical','IMU')
     title('X-position')
     hold off
     subplot(3,1,2)
     plot(kalmanHistory(2,:))
     hold all
-    plot(downsample(transPos(2,:),kalmanFreq));
-    plot(noisyKalmanPosIMU(2,:));
+    plot(downsample(transPos(2,:),kalmanFreq),':');
+    plot(noisyKalmanPosIMU(2,:),':');
     legend('Kalman','Physical','IMU')
     title('Y-position')
     hold off
     subplot(3,1,3)
     plot(kalmanHistory(3,:))
     hold all
-    plot(downsample(transPos(3,:),kalmanFreq));
-    plot(noisyKalmanPosIMU(3,:));
+    plot(downsample(transPos(3,:),kalmanFreq),':');
+    plot(noisyKalmanPosIMU(3,:),':');
     legend('Kalman','Physical','IMU')
     title('Z-position')
     hold off
@@ -348,30 +433,32 @@ function [] = HyperloopSim()
     subplot(3,1,3)
     hold all
     IMUvReal=noisyKalmanVelIMU(3,1:end-1)-downsample(transVel(3,:),kalmanFreq);
-    plot(noisyKalmanVelIMU(3,:));
-    plot(downsample(transVel(3,:),kalmanFreq));
-    plot(kalmanHistory(6,:))
+    plot(kalmanHistory(6,:));
+    plot(downsample(transVel(3,:),kalmanFreq),':');
+    plot(noisyKalmanVelIMU(3,:),':');
     title('Z-velocity')
     subplot(3,1,1)
     hold all
-%     IMUvReal=noisyKalmanVelIMU(3,1:end-1)-downsample(transVel(3,:),kalmanFreq);
-    plot(noisyKalmanVelIMU(1,:));
-    plot(downsample(transVel(1,:),kalmanFreq));
+%     IMUvReal=noisyKalmanVelIMU(3,1:end-1)-downsample(transVel(3,:),kalman
+%     Freq);
     plot(kalmanHistory(4,:))
+    plot(downsample(transVel(1,:),kalmanFreq),':');
+    plot(noisyKalmanVelIMU(1,:),':');
     title('X-velocity')
     subplot(3,1,2)
     hold all
 %     IMUvReal=noisyKalmanVelIMU(3,1:end-1)-downsample(transVel(3,:),kalmanFreq);
-    plot(noisyKalmanVelIMU(2,:));
-    plot(downsample(transVel(2,:),kalmanFreq));
+
     plot(kalmanHistory(5,:))
+    plot(downsample(transVel(2,:),kalmanFreq),':');
+        plot(noisyKalmanVelIMU(2,:),':');
     title('Y-velocity')
     
-    legend('IMU','Physical','Kalman')
+    legend('Kalman','Physical','IMU')
     hold off
     
 
    
 
 
-end
+% end

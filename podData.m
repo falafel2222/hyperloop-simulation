@@ -16,6 +16,21 @@ classdef podData
         skateHeight
         sideSensorDistance
         downSensorOffset
+        bottomDistancePositions
+        downRailDistancePositions
+        sideDistancePositions
+        pitotPosition
+        topPhotoElectricPositions
+        leftPhotoElectricPositions
+        rightPhotoElectricPositions
+        bottomDistanceDirections
+        downRailDistanceDirections
+        sideDistanceDirections
+        pitotDirection
+        topPhotoElectricDirections
+        leftPhotoElectricDirections
+        rightPhotoElectricDirections
+        
     end
     methods
         function pod = podData()
@@ -78,6 +93,27 @@ classdef podData
             end
 
             pod.eBrakeForce = 0.8*9.8*pod.mass;
+            
+            %%sensor locations
+            pod.bottomDistancePositions=[0 0 pod.length/2 pod.length/2 -pod.length/2 -pod.length/2;pod.width/2 -pod.width/2 pod.width/2 -pod.width/2 pod.width/2 -pod.width/2;pod.downSensorOffset-pod.skateHeight pod.downSensorOffset-pod.skateHeight pod.downSensorOffset-pod.skateHeight pod.downSensorOffset-pod.skateHeight pod.downSensorOffset-pod.skateHeight pod.downSensorOffset-pod.skateHeight];
+            pod.downRailDistancePositions=[pod.length/2 pod.length/3 0 -pod.length/3 -pod.length/2;0 0 0 0 0;pod.downSensorOffset  pod.downSensorOffset pod.downSensorOffset pod.downSensorOffset pod.downSensorOffset];
+            pod.sideDistancePositions=[pod.length/2 pod.length/3 0 -pod.length/3 -pod.length/2;pod.sideSensorDistance pod.sideSensorDistance pod.sideSensorDistance pod.sideSensorDistance pod.sideSensorDistance;-pod.skateHeight/2 -pod.skateHeight/2 -pod.skateHeight/2 -pod.skateHeight/2 -pod.skateHeight/2];
+            pod.pitotPosition=[pod.length/2;0;pod.height*2/3];
+            pod.topPhotoElectricPositions=zeros(3,3);
+            pod.leftPhotoElectricPositions=zeros(3,3);
+            pod.rightPhotoElectricPositions=zeros(3,3);
+            
+            %%Sensor directions
+            pod.bottomDistanceDirections=[0 0 0 0 0 0; 0 0 0 0 0 0; -1 -1 -1 -1 -1 -1;];
+            pod.downRailDistanceDirections=[0 0 0 0 0 0; 0 0 0 0 0 0; -1 -1 -1 -1 -1 -1;];
+            pod.sideDistanceDirections=[0 0 0 0 0 0;  -1 -1 -1 -1 -1 -1; 0 0 0 0 0 0;];
+            pod.pitotDirection=[1;0;0];
+            pod.topPhotoElectricDirections=[0 0 0; 0 0 0; 1 1 1;];
+            pod.leftPhotoElectricDirections=[0 0 0; 1 1 1; 1 1 1;]/sqrt(2);
+            pod.rightPhotoElectricDirections=[0 0 0; -1 -1 -1; 1 1 1;]/sqrt(2);
+            
+            
+            
             
         end
         
