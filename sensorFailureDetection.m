@@ -26,12 +26,12 @@ peRightUse=find((peRight>globals.peRightMin).*(peRight<globals.peRightMax).*(~is
 
 numberUsed=[length(distDownUse), length(distDownRailUse), length(distSideUse), length(pitotUse), length(peTopUse),length(peLeftUse),length(peRightUse)];
 
-sensorUse(1:numberUsed(1))=distDownUse;
-sensorUse(1:numberUsed(2))=distDownRailUse;
-sensorUse(1:numberUsed(3))=distSideUse;
-sensorUse(1:numberUsed(4))=pitotUse;
-sensorUse(1:numberUsed(5))=peTopUse;
-sensorUse(1:numberUsed(6))=peLeftUse;
-sensorUse(1:numberUsed(7))=peRightUse;
+sensorUse(1:numberUsed(1),1)=distDownUse;
+sensorUse(1:numberUsed(2),2)=distDownRailUse;
+sensorUse(1:numberUsed(3),3)=distSideUse;
+sensorUse(1:numberUsed(4),4)=pitotUse;
+sensorUse(1:numberUsed(5),5)=peTopUse;
+sensorUse(1:numberUsed(6),6)=peLeftUse;
+sensorUse(1:numberUsed(7),7)=peRightUse;
 
 end
