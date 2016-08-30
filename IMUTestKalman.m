@@ -1,4 +1,4 @@
-function [predictedState, predictedCovariance] = IMUTestKalman( prevState, prevCovariance, IMUData, sensorData, execution, sensorUse,numberUsed,timestep,globals,pod,tube,grav )
+function [predictedState, acc, predictedCovariance] = IMUTestKalman( prevState, prevCovariance, IMUData, sensorData, execution, sensorUse,numberUsed,timestep,globals,pod,tube,grav )
 
 % globals = globalData();
 % pod = podData();
@@ -195,6 +195,8 @@ Wk=zeros(10,10);
 xkp1k=xkk+timestep*[  xkk(4:6);...
                        (Rot*uk(1:3))-[0;0;grav;];...
                        (1/2).*(OmegaMatrix*xkk(7:10));];  %prediction step of the state 
+                   
+acc=(Rot*uk(1:3))-[0;0;grav;];
 
 Pkp1k=Fk*Pkk*Fk'+Bk*Qk*Bk'+Wk; %prediction step of the error, needs to be experimentally determined 
 

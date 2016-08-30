@@ -3,27 +3,34 @@
     globals = globalData();
     pod = podData();
     tube = tubeData();
+    kalman=0;
     
+    wait=4000;
 
+fileName='imutest2.txt';
 timestep=0.001;
 File=importdata(fileName,'\t',1);
 log=File.textdata;
 window=1;
 matdata=cellfun(@str2num,log(22:end,1:end-1));
-xGyro=filter(ones(1,window)/window,1,matdata(:,1));
-yGyro=filter(ones(1,window)/window,1,matdata(:,2));
-zGyro=filter(ones(1,window)/window,1,matdata(:,3));
+xGyro=filter(ones(1,window)/window,1,matdata(:,1))/timestep;
+yGyro=filter(ones(1,window)/window,1,matdata(:,2))/timestep;
+zGyro=filter(ones(1,window)/window,1,matdata(:,3))/timestep;
 xAcc=filter(ones(1,window)/window,1,matdata(:,4)*9.81);
 yAcc=filter(ones(1,window)/window,1,matdata(:,5)*9.81);
 zAcc=filter(ones(1,window)/window,1,matdata(:,6)*9.81);
 
+nSteps=min(600000,length(xAcc)-2*wait-1);
 time=0:timestep:timestep*(nSteps-1);
 fulltime=0:timestep:timestep*(length(xAcc)-1);
 
 qSt=[0.000001;0.000001;0.000001; sqrt(1-3*.000001^2)];
     
-grav=[xAStart,yAStart,zAStart]
-gravityVal=norm(grav)
+xAStart=mean(xAcc(wait:wait*2));
+yAStart=mean(yAcc(wait:wait*2)); 
+zAStart=mean(zAcc(wait:wait*2));
+grav=[xAStart,yAStart,zAStart];
+gravityVal=norm(grav);
 grav=grav/gravityVal;
 
 axis=cross(grav,[0,0,1]);
@@ -31,6 +38,9 @@ axis=axis'/norm(axis);
 
 angle=acos(dot(grav,[0,0,1])/(norm(grav)));
     
+% qSt=[axis*sin(angle/2);cos(angle/2);]
+% sqrt(1-(norm(axis*sin(angle/2)))^2)
+% qSt=qSt/norm(qSt)
 
 startCov=diag([0.0000001,0.0000001,0.0000001,0.0000001,0.0000001,0.0000001,0.00001,0.00001,0.00001,0.00001]);
 startState=[0;0;0;0;0;0;qSt;];
@@ -64,12 +74,14 @@ startState=[0;0;0;0;0;0;qSt;];
     state=startState;
     cov=startCov;
     for i=2:nSteps
-        if round(i/1000)==i/1000
-            disp(i)
-        end
+%         if round(i/1000)==i/1000
+%             disp(i)
+%         end
+        IMUData=[xAcc(wait*2+i-1),yAcc(wait*2+i-1),zAcc(wait*2+i-1),xGyro(wait*2+i-1),yGyro(wait*2+i-1),zGyro(wait*2+i-1)]';
+        [nextState,acc,nextCov]=IMUTestKalman(state, cov, IMUData, sensorData, execution, sensorUse,numberUsed, timestep,globals,pod,tube,gravityVal);
         transPos(:,i)=nextState(1:3);
         transVel(:,i)=nextState(4:6);
-        transAcc(:,i-1)=IMUData(1:3);
+        transAcc(:,i-1)=acc;
         q(:,i)=nextState(7:10);
         
         q0=q(4,i);
@@ -124,54 +136,93 @@ startState=[0;0;0;0;0;0;qSt;];
     
     figure();
     subplot(3,3,1);
+    plot(time,transAcc(1,:),'r');
+    title('x acc vs. time');
+    xlabel('seconds');
+    ylabel('m/s^2');
+
+    subplot(3,3,2);
+    plot(time,transAcc(2,:),'b');
+    title('y acc vs. time');
+    xlabel('seconds');
+    ylabel('m/s^2');
+
+    subplot(3,3,3);
+    plot(time,transAcc(3,:),'g');
+    title('z acc vs. time');
+    xlabel('seconds');
+    ylabel('m/s^2');
+
+    subplot(3,3,4);
     plot(time,transVel(1,:),'r');
     title('x vel vs. time');
     xlabel('seconds');
     ylabel('m/s');
 
-    subplot(3,3,2);
+    subplot(3,3,5);
     plot(time,transVel(2,:),'b');
     title('y vel vs. time');
     xlabel('seconds');
     ylabel('m/s');
 
-    subplot(3,3,3);
+    subplot(3,3,6);
     plot(time,transVel(3,:),'g');
     title('z vel vs. time');
     xlabel('seconds');
     ylabel('m/s');
 
-    subplot(3,3,4);
+    subplot(3,3,7);
     plot(time,transPos(1,:),'r');
     title('x pos vs. time');
     xlabel('seconds');
     ylabel('m');
 
-    subplot(3,3,5);
+    subplot(3,3,8);
     plot(time,transPos(2,:),'b');
     title('y pos vs. time');
     xlabel('seconds');
     ylabel('m');
 
-    subplot(3,3,6);
+    subplot(3,3,9);
     plot(time,transPos(3,:),'g');
     title('z pos vs. time');
     xlabel('seconds');
     ylabel('m');
+    
+    
+    figure();
+    subplot(2,3,1);
+    plot(fulltime,xGyro,'r');
+    title('x rot vel vs. time');
+    xlabel('seconds');
+    ylabel('rad/s');
 
-    subplot(3,3,7);
+    subplot(2,3,2);
+    plot(fulltime,yGyro,'b');
+    title('y rot vel vs. time');
+    xlabel('seconds');
+    ylabel('rad/s');
+
+    subplot(2,3,3);
+    plot(fulltime,zGyro,'g');
+    title('z rot vel vs. time');
+    xlabel('seconds');
+    ylabel('rad/s');
+
+    
+    subplot(2,3,4);
     plot(time,rotPos(1,:)*180/pi,'r');
     title('roll vs. time');
     xlabel('seconds');
     ylabel('deg');
 
-    subplot(3,3,8);
+    subplot(2,3,5);
     plot(time,rotPos(2,:)*180/pi,'b');
     title('pitch vs. time');
     xlabel('seconds');
     ylabel('deg');
 
-    subplot(3,3,9);
+    subplot(2,3,6);
     plot(time,rotPos(3,:)*180/pi,'g');
     title('yaw vs. time');
     xlabel('seconds');
