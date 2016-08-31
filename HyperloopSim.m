@@ -14,6 +14,7 @@
     sensorNum=[];
     sensorFailState=[];
     
+    
     if globals.correctCovariance
          globals.peTopSIMCovConst = globals.peTopSIMCovConst;
          globals.peLeftSIMCovConst = globals.peLeftSIMCovConst;
@@ -51,8 +52,13 @@
     % temporary vectors for debugging purposes
     rolls = zeros(1,globals.numSteps/kalmanFreq+1);
     scannerDistances = zeros(globals.numSteps/kalmanFreq+1);
+    
+    photoelectricCount=zeros(9,1);
+    lastPE=-5*ones(9,1);
+    prevPE=zeros(9,1);
 
     
+    peRecord = nan(1,globals.numSteps/kalmanFreq+1);
     noisyKalmanPosIMU = zeros(3,globals.numSteps/kalmanFreq+1);
     noisyKalmanVelIMU = zeros(3,globals.numSteps/kalmanFreq+1);
     noisyKalmanPosIMU(3,1) = .003;
@@ -256,16 +262,26 @@
             end
             
             pitotRead=0.5*globals.airDensity*(dot(transVel(:,n),rotMatrix*pod.pitotDirection))^2;
+            photoelectricData=nan(6,3);
+            for i=1:3
+                photoelectricData(i,1) = photoelectricReadingTop(pod.topPhotoElectricPositions(:,i), state, tube.stripDistances(photoelectricCount(i)+1), pod.peToWall(i), tube,pod);
+            end
+            for i=1:3
+                photoelectricData(i,2) = photoelectricReadingLR(pod.leftPhotoElectricPositions(:,i), state, tube.stripDistances(photoelectricCount(3+i)+1), pod.peToWall(3+i), tube,pod);
+            end
+            peRecord(n/kalmanFreq+1)=photoelectricData(2,2);
+            for i=1:3
+                photoelectricData(i,3) = photoelectricReadingLR(pod.rightPhotoElectricPositions(:,i), state, tube.stripDistances(photoelectricCount(6+i)+1), pod.peToWall(6+i), tube,pod);
+            end
             
-
+      
+            [photoelectricCount,photoelectricUse,lastPE]=photoelectric(photoelectricCount,photoelectricData,lastPE,prevPE,n*globals.timestep,pod);
             
             sensorData = [[scanner1dist']...
                 [scanner2dist'; NaN;]...
                 [scanner3dist'; NaN;]...
                 [pitotRead;nan(5,1)]...
-                [zeros(3,1); nan(3,1)]...
-                [zeros(3,1); nan(3,1)]...
-                [zeros(3,1); nan(3,1)]];
+                photoelectricData];
             execution =  [0 0 0 0 0 0 0];
 
             if mod(n,kalmanFreq*5) == 0
@@ -276,7 +292,9 @@
             
             if mod(n,kalmanFreq*8) == 0
                 execution(4) = 1;
-            end   
+            end
+            
+            execution(5:7)=photoelectricUse;
             
             IMUData = [transAcc(:,n)' rotVel(:,n)']';
 %             disp('imu')
@@ -297,9 +315,9 @@
                     [sqrt(globals.distDownRailSIMCovConst+globals.distDownRailSIMCovLin.*abs(scanner2dist'-globals.distDownRailSIMCovZero));NaN].*randn(6,1)...
                     [sqrt(globals.distSideSIMCovConst+globals.distSideSIMCovLin.*abs(scanner3dist'-globals.distSideSIMCovZero));NaN].*randn(6,1)...
                     [sqrt(globals.pitotSIMCovConst+globals.pitotSIMCovLin.*abs(pitotRead-globals.pitotSIMCovZero)); nan(5,1)].*randn(6,1)...
-                    [zeros(3,1); nan(3,1)]...
-                    [zeros(3,1); nan(3,1)]...
-                     [zeros(3,1); nan(3,1)]];
+                    [sqrt(globals.peTopSIMCovConst+globals.peTopSIMCovLin.*abs(photoelectricData(1:3,1)-globals.peTopSIMCovZero)); nan(3,1)]...
+                    [sqrt(globals.peLeftSIMCovConst+globals.peLeftSIMCovLin.*abs(photoelectricData(1:3,2)-globals.peLeftSIMCovZero)); nan(3,1)]...
+                    [sqrt(globals.peRightSIMCovConst+globals.peRightSIMCovLin.*abs(photoelectricData(1:3,3)-globals.peRightSIMCovZero)); nan(3,1)]];
             end
             
 %             if (n/kalmanFreq > 1)
@@ -371,7 +389,7 @@
 
             [sensorUse,numberUsed] = sensorFailureDetection(sensorData,globals,pod,tube);
             
-            [state, covariance] = KalmanFilterHyperloop(state, covariance, IMUData, sensorData, execution, sensorUse,numberUsed, n/kalmanFreq,globals,pod,tube);
+            [state, covariance,~] = KalmanFilterHyperloop(state, covariance, IMUData, sensorData, execution, sensorUse,numberUsed, n/kalmanFreq,globals,pod,tube);
 %              if mod(n,kalmanFreq*5) == 0
 %                 distance1Pos
 %                 transPos(:,n)

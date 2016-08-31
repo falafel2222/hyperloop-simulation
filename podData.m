@@ -30,6 +30,11 @@ classdef podData
         topPhotoElectricDirections
         leftPhotoElectricDirections
         rightPhotoElectricDirections
+        photoElectricTilt
+        angleOfPESensitivity
+        peMax
+        peToWall
+        peFloor
         
     end
     methods
@@ -39,6 +44,10 @@ classdef podData
             pod.length = 6;
             pod.width = 1;
             pod.height = 1;
+            pod.photoElectricTilt=13*pi/180; %rad
+            pod.angleOfPESensitivity = 80*pi/180; %rad
+            pod.peMax=1;
+            pod.peFloor=0.1;
             pod.skateHeight=0.113919;
             pod.downSensorOffset=0.0005;
             pod.sideSensorDistance=6*2.54/100;
@@ -99,9 +108,9 @@ classdef podData
             pod.downRailDistancePositions=[pod.length/2 pod.length/3 0 -pod.length/3 -pod.length/2;0 0 0 0 0;pod.downSensorOffset  pod.downSensorOffset pod.downSensorOffset pod.downSensorOffset pod.downSensorOffset];
             pod.sideDistancePositions=[pod.length/2 pod.length/3 0 -pod.length/3 -pod.length/2;pod.sideSensorDistance pod.sideSensorDistance pod.sideSensorDistance pod.sideSensorDistance pod.sideSensorDistance;-pod.skateHeight/2 -pod.skateHeight/2 -pod.skateHeight/2 -pod.skateHeight/2 -pod.skateHeight/2];
             pod.pitotPosition=[pod.length/2;0;pod.height*2/3];
-            pod.topPhotoElectricPositions=zeros(3,3);
-            pod.leftPhotoElectricPositions=zeros(3,3);
-            pod.rightPhotoElectricPositions=zeros(3,3);
+            pod.topPhotoElectricPositions=[pod.length*1/3 0 -pod.length/3; 0 0 0; pod.height-pod.skateHeight pod.height-pod.skateHeight pod.height-pod.skateHeight];
+            pod.leftPhotoElectricPositions=[pod.length*1/3 0 -pod.length/3; pod.width/(2*sqrt(2)) pod.width/(2*sqrt(2)) pod.width/(2*sqrt(2)); (pod.height*(0.5+1/(2*sqrt(2)))-pod.skateHeight) (pod.height*(0.5+1/(2*sqrt(2)))-pod.skateHeight) (pod.height*(0.5+1/(2*sqrt(2)))-pod.skateHeight)];
+            pod.rightPhotoElectricPositions=[pod.length*1/3 0 -pod.length/3; -pod.width/(2*sqrt(2)) -pod.width/(2*sqrt(2)) -pod.width/(2*sqrt(2)); (pod.height*(0.5+1/(2*sqrt(2)))-pod.skateHeight) (pod.height*(0.5+1/(2*sqrt(2)))-pod.skateHeight) (pod.height*(0.5+1/(2*sqrt(2)))-pod.skateHeight)];
             
             %%Sensor directions
             pod.bottomDistanceDirections=[0 0 0 0 0 0; 0 0 0 0 0 0; -1 -1 -1 -1 -1 -1;];
@@ -111,6 +120,8 @@ classdef podData
             pod.topPhotoElectricDirections=[0 0 0; 0 0 0; 1 1 1;];
             pod.leftPhotoElectricDirections=[0 0 0; 1 1 1; 1 1 1;]/sqrt(2);
             pod.rightPhotoElectricDirections=[0 0 0; -1 -1 -1; 1 1 1;]/sqrt(2);
+            
+            pod.peToWall=[.5 .5 .5 .6 .6 .6 .6 .6 .6]'; %m THIS NEEDS TO BE CORRECTED
             
             
             

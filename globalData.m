@@ -64,9 +64,9 @@ classdef globalData
         
         correctCovariance = true %if using the covariances above to generate the noise as well as in the Kalman Filter. Else it uses covariances below.
         
-        peTopSIMCovConst = .0000000001*ones(3,1);
-        peLeftSIMCovConst = .0000000001*ones(3,1);
-        peRightSIMCovConst = .0000000001*ones(3,1);
+        peTopSIMCovConst = .00001*ones(3,1);
+        peLeftSIMCovConst = .00001*ones(3,1);
+        peRightSIMCovConst = .00001*ones(3,1);
         pitotSIMCovConst = .001
         distDownSIMCovConst = .0001*ones(6,1);
         distDownRailSIMCovConst = .0001*ones(5,1);
@@ -74,9 +74,9 @@ classdef globalData
         IMUAccelSIMCovConst = .00001*ones(3,1);
         IMUGyroSIMCovConst = .000001*ones(3,1);
         
-        peTopSIMCovLin = .0000000001*ones(3,1);
-        peLeftSIMCovLin = .0000000001*ones(3,1);
-        peRightSIMCovLin = .0000000001*ones(3,1);
+        peTopSIMCovLin = .00001*ones(3,1);
+        peLeftSIMCovLin = .00001*ones(3,1);
+        peRightSIMCovLin = .00001*ones(3,1);
         pitotSIMCovLin = .001
         distDownSIMCovLin = .0001*ones(6,1);
         distDownRailSIMCovLin = .0001*ones(5,1);
@@ -94,9 +94,9 @@ classdef globalData
         IMUAccelSIMCovZero = 0*ones(3,1);
         IMUGyroSIMCovZero = 0*ones(3,1);
         
-        peTopMax=1*ones(3,1); %these are the values that the sensors would report if they returned the upper rail voltage
-        peLeftMax=1*ones(3,1);
-        peRightMax=1*ones(3,1);
+        peTopMax=1.1*ones(3,1); %these are the values that the sensors would report if they returned the upper rail voltage
+        peLeftMax=1.1*ones(3,1);
+        peRightMax=1.1*ones(3,1);
         pitotMax=50;
         distDownMax=0.01*ones(6,1);
         distDownRailMax=0.01*ones(5,1);
@@ -104,9 +104,9 @@ classdef globalData
       
        
         
-        peTopMin=0*ones(3,1); %these are the values that the sensors would report if they returned the lower rail voltage
-        peLeftMin=0*ones(3,1);
-        peRightMin=0*ones(3,1);
+        peTopMin=-0.1*ones(3,1); %these are the values that the sensors would report if they returned the lower rail voltage
+        peLeftMin=-0.1*ones(3,1);
+        peRightMin=-0.1*ones(3,1);
         pitotMin=-5;
         distDownMin=0*ones(6,1);
         distDownRailMin=0*ones(5,1);

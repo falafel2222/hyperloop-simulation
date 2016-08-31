@@ -1,4 +1,4 @@
-function output = photoelectricReading(sensorPosition,sensorOrientation, podPosition, podRotation, tube) 
+function output = photoelectricReadingLR(sensorPosition,sensorOrientation, podPosition, podRotation, tube,pod,globals) 
 
 %pull out variables of pod state
 rx=podPosition(1);
