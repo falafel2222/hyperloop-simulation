@@ -1,44 +1,32 @@
-function [ output ] = PhaseAndBraking( PodPhase,BrakingModeStatus,CommandPointCommands,IMUglobaldata,KalmanStates,StripCount,BrakingStripThreshold,FlightTime,BrakingTimeThreshold,Fpb,Feb,TrackLength,PlantStatus,PusherReleaseDist,PusherReleaseTime,Mpod,Aresist,Amax )
+function [ output ] = PhaseAndBraking( PodPhase,BrakingModeStatus,CommandPointCommands,IMUglobaldata,KalmanStates,StripCount,BrakingStripThreshold,FlightTime,BrakingTimeThreshold,Fpb,Feb,TrackLength,PlantStatus,PusherReleaseDist,PusherReleaseTime,Mpod,Aresist,Amax,ReleaseDistMargin,PrimaryBrakeStoppingDistanceMargin,PBerrorMargin,CurrentStoppingDistanceMargin,FullBrakeSoppingDistanceMargin)
 %OpenLoop
 %SpaceX Hyperloop Pod Competition 2015-2016
 %Control - Braking Algorithm
 %Version 0.9
-%Updated: 08/28/2016
+%Updated: 08/29/2016
 %Chris Kotcherha - Harvey Mudd College - Class of 2018 - Engineering
 %
 %Note: This function really handles more than 'braking', it determines the
-%PodPhase, which is central to possible control behavior modes for the
-%various control algorithms. We can actually move 'braking' code out of
-%this function into it's own independednt (very consise) function because
-%85% of this is really 'Pod Phase checking'
+%'PodPhase', which is central to possible control behavior modes for the
+%various control algorithms.
 %
 %ASSUME: 
-%Imported KalmanStates are smoothened out (averaged) to eliminate noise and
-%outliers... TODO
 %'FlightTime' = 0 until pusher launches
 %Pod at 3D origin when ready to launch, at rest
 %
-%global/shared variable types/sizes % TODO
-%
-%Input types: PodPhase (Int), BrakingModeStatus (Int), CommandPointCommands
-%(Int Array), KalmanStates (10X1 double), IMUdata (?x? double),StripCount (Int), BrakingStripThreshold (Int),
-%FlightTime (Int), BrakingTimeThreshold (Int), Fpb (Int), Feb (Int),
-%TrackLength (Int), PlantStatus (Int Array),PusherReleaseDist (Int), Apush
-%(Int), Mpod (Int), Aresist (Int), Amax (Int)
+%Input types: 
+%PodPhase (Int), BrakingModeStatus (Int), CommandPointCommands (Int Array),
+%KalmanStates (10X1 double), IMUdata (?x? double),StripCount (Int),
+%BrakingStripThreshold (Int), FlightTime (Int), BrakingTimeThreshold (Int),
+%Fpb (1X1 Double), Feb (1X1 Double), TrackLength (1X1 Double), PlantStatus
+%(Int Array),PusherReleaseDist (1X1 Double), Mpod (1X1 Double), Aresist
+%(1X1 Double), Amax (1x1 Double),ReleaseDistMargin (1x1 Double),
+%PrimaryBrakeStoppingDistanceMargin (1x1 Double),PBerrorMargin (1x1
+%Double),CurrentStoppingDistanceMargin (1x1
+%Double),FullBrakeSoppingDistanceMargin (1x1 Double)
+% 
 %Example Input:
-%(2,8,[0],[1700.0 2.0 3.0; 4.0 5.0 6.0; 7.0 8.0 9.0],42,69,14444,340584,1400.0,14000.0,2000.0,[0, 0, 0, 0, 1],1600.0,20000,750.0,-1.0,-19.7)
-%Start on pusher, triggered by pod position, change to coasting.
 %
-%Predetermined=static inputs (Some can become dynamic if necessary, but
-%updated outside of this function. Others rely on average kinematic profile
-%values and need to stay static to avoid unintentional triggers):
-%BrakingStripThreshold (keep static),BrakingTimeThreshold (keep static),Fpb
-%(initialize once externally,change internally if necessary, always output),Feb (keep static), TrackLength (keep
-%static),PusherReleaseDist (keep static),PusherReleaseTime (keep
-%static),Mpod (can be dynamic).
-%
-%Each iteration, update/store all dynamic inputs externally. Make sure the dynamic
-%ones only initialized once where appropriate (ex. Fpb,Mpod,etc.)
 %
 %Output: 
 %PodPhase (String),BrakingModeStatus (String),PrimaryBrakeCommand
@@ -47,42 +35,60 @@ function [ output ] = PhaseAndBraking( PodPhase,BrakingModeStatus,CommandPointCo
 %Example Output:
 %(3,8,0,0,0,0,1,1400)
 %
-%Variable Descriptions: %specify units % TODO
-%PodPhase (String) - current flight phase of pod.
-%BrakingModeStatus (String) - current desired/signaled combination of braking, wheels,
-%skates actuation.
-%CommandPointCommands(Array) - Commands from the remote Command Point
+%Variable Descriptions: %Metric (m, m/s m/s^2, N, ms)
+%PodPhase (Int Array) - current flight phase of pod. 
+%BrakingModeStatus (Int) - current desired/signaled combination of braking,
+%wheels, skates actuation.
+%CommandPointCommands(Int Array) - Commands from the remote Command Point
 %terminal including emergency stop signal.
-%KalmanStates (2D Array) - Full set of current Pod Kalman States.
+%KalmanStates (1X10 Double) - Full set of current Pod Kalman States.
 %StripCount (Int) - Number of detected retroreflective strips passed.
-%BrakingStripThreshold (Int) - Predermined/calculated number of strips allowed to pass
-%before BrakingPhase should trigger, late estimate.
+%BrakingStripThreshold (Int) - Predermined/calculated number of strips
+%allowed to pass before BrakingPhase should trigger, late estimate.
 %FlightTime (Int) - time elapsed, where t=0 at pusher launch start.
-%BrakingTimeThreshold (Int) - Predetermined/calculated Flight time allowed to elapsed before BrakingPhase should trigger, late estimate 
-%Fpb (Int) - Braking Force of Primary brakes in x-axis (negative val).
-%Feb (Int) - Braking Force of all E-brakes in x-axis (negative val).
-%TrackLength (Int) - Distance from front of pod (?) to end of track.
-%PlantStatus (Array) - Current state (including currently changing state) of each control plant.
-%PusherReleaseDist (Int) - Predetermined distance traveled by pod from start before
-%release.
+%BrakingTimeThreshold (Int) - Predetermined/calculated Flight time allowed
+%to elapsed before BrakingPhase should trigger, late estimate
+%Fpb (1X1 Double) - Braking Force of Primary brakes in x-axis (negative val).
+%Feb (1X1 Double) - Braking Force of all E-brakes in x-axis (negative val).
+%TrackLength (1X1 Double) - Distance from front of pod (?) to end of track.
+%PlantStatus (Int Array) - Current state (including currently changing
+%state) of each control plant.
+%PusherReleaseDist (1X1 Double) - Predetermined distance traveled by pod
+%from start before release.
 %PusherReleaseTime (Int) - Predetermined Flight Time elapsed when pusher
 %releases pod.
-%Mpod (Int) - Current Mass of entire Pod.
-%Aresist (Int) - Average decceleration while coasting over a few time steps (from
-%friction/contact/etc), calculate outside when 'Coasting Phase' AND brakes
-%0, update (negative val).
-%Amax (Int) - max negative decceleration allowed by SpaceX (negative val).
+%Mpod (1X1 Double) - Current Mass of entire Pod.
+%Aresist (1X1 Double) - Average decceleration while coasting over a few
+%time steps (from friction/contact/etc), calculate outside when 'Coasting
+%Phase' AND brakes 0, update (negative val).
+%Amax (1X1 Double) - max negative decceleration allowed by SpaceX (negative
+%val).
+%ReleaseDistMargin (1x1 Double) - How much farther after calculated pusher
+%release distance pusher release can trigger.
+%PrimaryBrakeStoppingDistanceMargin (1x1 Double) - How far sooner before
+%calculated PB stopping distance point primary brakes will trigger.
+%PBerrorMargin (1x1 Double) - Factor more or less that the real PB force
+%can be than theortical PB braking force can be before a recalculation is
+%triggered. (.05 = ±5%)
+%CurrentStoppingDistanceMargin (1x1 Double) - How far sooner before track
+%end calculated current stopping distance point needs to be for primary
+%brakes to temporarily release.
+%FullBrakeSoppingDistanceMargin (1x1 Double) - How far sooner before
+%calculated PB+EB stopping distance needs to be for e-brakes to trigger.
 
 %DETERMINE BRAKINGMODESTATUS AND PODPHASE (EVENTUALLY): PodPhase and
 %BrakingModeStatus input initialized as STANDBY in main script, before
 %calling this function for the first time!!!
 
-%Local Variables:
-Ax = IMUglobaldata(1:1); %x-acceleration from IMU %update var % TODO
-%Note: Not all math in conditionals assigned to variables beforehand to save unnesessary
-%computation time
+%Local Variables (used often):
+Ax = IMUglobaldata(3); %x-acceleration from IMU
+xpos = KalmanStates(1);
+xvel = KalmanStates(4);
+%Note:some local variables initialized later to avoid unnecessary
+%computatuon
 
-STANDBY = 0; %Both
+%MODES:
+STANDBY = 0; %Used for Both
 %PodPhase
 PREFLIGHT = 1;
 PUSHER_PHASE = 2;
@@ -127,7 +133,7 @@ elseif PodPhase == PREFLIGHT %All possible braking modes cycled
 %%%PusherPhase:
 %(NEVER Engage Brakes)
 elseif PodPhase == PUSHER_PHASE %Off only
-    if KalmanStates(1)>PusherReleaseDist +10 %xpos %Kalman xpos based, with 10m margin
+    if xpos>PusherReleaseDist + ReleaseDistMargin %xpos %Kalman xpos based, with margin
         BrakingModeStatus = OFF; %DO NOT CHANGE
         PodPhase = COASTING_PHASE; %DO NOT CHANGE
     elseif FlightTime>PusherReleaseTime %timer based on predetermined pusher accel and pusher dist %assumes predetermined constant accel
@@ -156,18 +162,21 @@ elseif CommandPointCommands(1) == 1 %update var % TODO
     
 %Check if plant is mid-actuation. Don't switch modes if it is. Waits until
 %plants are stable
-elseif True
+if True
     for i = 5
         if ~(isequal(PlantStatus(i),0) || isequal(PlantStatus(i),1))
         end
     end
-
+end
 
 %%%CoastingPhase:
 %check to start 'Braking Phase' (3 checks)
 elseif PodPhase == COASTING_PHASE %FULL_STOP or temporary PRIMARY_STOP braking possible
+    PrimaryBrakeStoppingDistance = -1/(2*Ax+Fpb/Mpod)*xvel^2 + PrimaryBrakeStoppingDistanceMargin;
+    TrackDistanceLeft = (TrackLength-xpos);
     %Check Kalman (xpos Live Trajectory based)
-    if -1/(2*Ax+Fpb/Mpod)*KalmanStates(4)^2 +5 > (TrackLength-KalmanStates(1)) %xvel,xpos %if absolute stopping distance with primarybrakes (constant decceleration) < x remaining (track length-distance travelled) %(trajectory based, so if primary brakes activate now, pod stops at 5m before end)
+    
+    if PrimaryBrakeStoppingDistance > TrackDistanceLeft %xvel,xpos %if absolute stopping distance with primarybrakes (constant decceleration) < x remaining (track length-distance travelled) %(trajectory based, so if primary brakes activate now, pod stops at 5m before end)
         BrakingModeStatus = PRIMARY_STOP;
         PodPhase = BRAKING_PHASE;
         
@@ -194,20 +203,25 @@ elseif PodPhase == COASTING_PHASE %FULL_STOP or temporary PRIMARY_STOP braking p
 
 %%%Braking Phase: (Trust Kalman)
 elseif PodPhase == BRAKING_PHASE %PRIMARY_STOP or FULL_STOP braking possible
-   MinStoppingAx = -0.5/(TrackLength-KalmanStates(1))*KalmanStates(4)^2; %xpos %xvel %min accel required to stop the pod at the end at any given time %update var % TODO
+   PrimaryBrakeStoppingDistance = -1/(2*Ax+Fpb/Mpod)*xvel^2 + PrimaryBrakeStoppingDistanceMargin;
+   FullBrakeStopppingDistance = -1/(2*(Feb+Fpb)/Mpod)*xvel^2 + FullBrakeSoppingDistanceMargin;
+   CurrentStoppingDistance = -1/(2*Ax)*xvel^2 + CurrentStoppingDistanceMargin;
+   TrackDistanceLeft = (TrackLength-xpos);
+   TheoreticalPBTotalForce = (Fpb/Mpod)+Aresist;
+   MinStoppingAx = -0.5/TrackDistanceLeft*xvel^2; %xpos %xvel %min accel required to stop the pod at the end at any given time %update var % TODO
    %Check if actual primary braking force higher/lower than expected. update Fpb
    if BrakingModeStatus == PRIMARY_STOP
        %Check if real pb value differs
-       if abs(Ax-((Fpb/Mpod)+Aresist)*1.05) > (Fpb/Mpod)+Aresist  % margin of error (5%), so only triggers if significant difference, less jittery
+       if abs(Ax-(TheoreticalPBTotalForce)*(1+PBerrorMargin)) > TheoreticalPBTotalForce  % margin of error (.05 = 5%), so only triggers if significant difference, less jittery
            Fpb = (Ax-Aresist)*Mpod; %update true Fpb
        end  
        %Check if we can release pb for a bit
-       if -1/(2*Ax)*KalmanStates(4)^2 +5 < (TrackLength-KalmanStates(1)) %if pb physically too high, BRAKING_READY!!!?
+       if CurrentStoppingDistance < TrackDistanceLeft %if pb physically too high, BRAKING_READY!!!?
            BrakingModeStatus = BRAKING_READY;
            
       %Check if E-brakes needed (actual primary braking force lower than expected %Fpb)
        elseif Ax > MinStoppingAx %triggers as soon as we determine more deceleration is needed (will overshoot end with just pb)
-           if -1/(2*(Feb+Fpb)/Mpod)*KalmanStates(4)^2 + 5 > (TrackLength-KalmanStates(1)) %xvel, xpos %FullStop abs stopping distance > Distance left %triggers as late as we can %margin of error (5 m for now, increase if less confident in Feb) %update var % TODO
+           if FullBrakeStopppingDistance > TrackDistanceLeft %xvel, xpos %FullStop abs stopping distance > Distance left %triggers as late as we can %margin of error (5 m for now, increase if less confident in Feb) %update var % TODO
                BrakingModeStatus = FULL_STOP; %if Feb higher than expected, doesnt matter, locked in anyway
            else
                BrakingModeStatus = PRIMARY_STOP;
@@ -217,7 +231,7 @@ elseif PodPhase == BRAKING_PHASE %PRIMARY_STOP or FULL_STOP braking possible
        end
    
    elseif BrakingModeStatus == BRAKING_READY
-       if -1/(2*Ax+Fpb/Mpod)*KalmanStates(4)^2 +5 > (TrackLength-KalmanStates(1)) %xvel,xpos %if absolute stopping distance with primarybrakes (constant decceleration) < x remaining (track length-distance travelled) %(trajectory based, so if primary brakes activate now, pod stops at 5m before end)
+       if PrimaryBrakeStoppingDistance > TrackDistanceLeft %xvel,xpos %if absolute stopping distance with primarybrakes (constant decceleration) < x remaining (track length-distance travelled) %(trajectory based, so if primary brakes activate now, pod stops at 5m before end)
            BrakingModeStatus = PRIMARY_STOP;
        end
    end
