@@ -1,5 +1,5 @@
 function [] = OneDoFpodSim(runtime, Apusher, Aresist, realFpb, realFeb, Fpb, Mpod  )
-
+%OneDoFpodSim(300, 16.6, -0.2, -1450, -1150, -1450, 750)
 
 dt = .001; %1kHz
 numdatapoints = runtime/dt;
@@ -69,8 +69,8 @@ for i = 2:numdatapoints
         break
     end
 
-    PodPhases = {'Preflight','Pusher Phase','Coasting Phase','Braking Phase'};
-    BrakingModeStatuses = {'1','2','3','4','Full Stop','Full Stop Less','Primary Stop','Braking Ready','Off'};
+    %PodPhases = {'Preflight','Pusher Phase','Coasting Phase','Braking Phase'};
+    %BrakingModeStatuses = {'1','2','3','4','Full Stop','Full Stop Less','Primary Stop','Braking Ready','Off'};
     
     disp 'PodPhase is'
     if PodPhase == 1
@@ -129,7 +129,7 @@ for i = 2:numdatapoints
     %Calculate inputs:
     %PodPhase
     %BrakingModeStatus
-    CommandPointCommands = [0 ,1];
+    CommandPointCommands = [0,1];
     IMUglobaldata = [0 0 xaccel];
     KalmanStates = [xpos 0 0 xvel 0 0 0 0 0];
     StripCount = 0; %idk
@@ -140,16 +140,16 @@ for i = 2:numdatapoints
     Feb = realFeb; %accurate estimation
     TrackLength = 1600; %m
     %PlantStatus
-    PusherReleaseDist = 300; %m arb
-    PusherReleaseTime = 2*1000; %ms arb
+    PusherReleaseDist = 185; %m arb
+    PusherReleaseTime = 50*1000; %ms arb
     %Mpod
     %Aresist
-    Amax = 9.81*2; %m/s^2
-    ReleaseDistMargin = 5; %m
-    PrimaryBrakeStoppingDistanceMargin = 5; %m
-    PBerrorMargin = .1; %5percent 
-    CurrentStoppingDistanceMargin = 5; %m
-    FullBrakeSoppingDistanceMargin = 5; %m
+    Amax = -9.81*2; %m/s^2
+    ReleaseDistMargin = 0; %m
+    PrimaryBrakeStoppingDistanceMargin = 0; %m
+    PBerrorMargin = 0.1; %5percent 
+    CurrentStoppingDistanceMargin = 0; %m
+    FullBrakeSoppingDistanceMargin = 0; %m
     
     %Run PhaseAndBraking and save results
     result = PhaseAndBraking(PodPhase,BrakingModeStatus,CommandPointCommands,IMUglobaldata,KalmanStates,StripCount,BrakingStripThreshold,FlightTime,BrakingTimeThreshold,Fpb,Feb,TrackLength,PlantStatus,PusherReleaseDist,PusherReleaseTime,Mpod,Aresist,Amax,ReleaseDistMargin,PrimaryBrakeStoppingDistanceMargin,PBerrorMargin,CurrentStoppingDistanceMargin,FullBrakeSoppingDistanceMargin);

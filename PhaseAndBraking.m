@@ -172,7 +172,7 @@ end
 %%%CoastingPhase:
 %check to start 'Braking Phase' (3 checks)
 elseif PodPhase == COASTING_PHASE %FULL_STOP or temporary PRIMARY_STOP braking possible
-    PrimaryBrakeStoppingDistance = -1/(2*Ax+Fpb/Mpod)*xvel^2 + PrimaryBrakeStoppingDistanceMargin;
+    PrimaryBrakeStoppingDistance = -1/(2*(Ax+Fpb/Mpod))*xvel^2 + PrimaryBrakeStoppingDistanceMargin;
     TrackDistanceLeft = (TrackLength-xpos);
     %Check Kalman (xpos Live Trajectory based)
     
@@ -203,8 +203,8 @@ elseif PodPhase == COASTING_PHASE %FULL_STOP or temporary PRIMARY_STOP braking p
 
 %%%Braking Phase: (Trust Kalman)
 elseif PodPhase == BRAKING_PHASE %PRIMARY_STOP or FULL_STOP braking possible
-   PrimaryBrakeStoppingDistance = -1/(2*Ax+Fpb/Mpod)*xvel^2 + PrimaryBrakeStoppingDistanceMargin;
-   FullBrakeStopppingDistance = -1/(2*(Feb+Fpb)/Mpod)*xvel^2 + FullBrakeSoppingDistanceMargin;
+   PrimaryBrakeStoppingDistance = -1/(2*(Ax+Fpb/Mpod))*xvel^2 + PrimaryBrakeStoppingDistanceMargin;
+   FullBrakeStopppingDistance = -1/(2*((Feb+Fpb)/Mpod))*xvel^2 + FullBrakeSoppingDistanceMargin;
    CurrentStoppingDistance = -1/(2*Ax)*xvel^2 + CurrentStoppingDistanceMargin;
    TrackDistanceLeft = (TrackLength-xpos);
    TheoreticalPBTotalForce = (Fpb/Mpod)+Aresist;
@@ -212,7 +212,7 @@ elseif PodPhase == BRAKING_PHASE %PRIMARY_STOP or FULL_STOP braking possible
    %Check if actual primary braking force higher/lower than expected. update Fpb
    if BrakingModeStatus == PRIMARY_STOP
        %Check if real pb value differs
-       if abs(Ax-(TheoreticalPBTotalForce)*(1+PBerrorMargin)) > TheoreticalPBTotalForce  % margin of error (.05 = 5%), so only triggers if significant difference, less jittery
+       if abs(Ax-(TheoreticalPBTotalForce)) > Fpb*PBerrorMargin  % margin of error (.05 = 5%), so only triggers if significant difference, less jittery
            Fpb = (Ax-Aresist)*Mpod; %update true Fpb
        end  
        %Check if we can release pb for a bit
