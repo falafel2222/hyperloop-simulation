@@ -30,5 +30,5 @@ xB=v.*(tan(phi)-l);
 g=0.5*pod.peMax*(1+cos(m.*((v).*tan(phi)+sx-nextStrips)));
 
 %PE reading
-output=g.*(xA+sx+tube.stripWidth/2>nextStrips).*((xB+sx-tube.stripWidth/2)<nextStrips);
+output=g.*((xA+sx+tube.stripWidth/2)>nextStrips).*((xB+sx-tube.stripWidth/2)<nextStrips);
         

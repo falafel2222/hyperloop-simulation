@@ -1,4 +1,4 @@
-function [predictedState, predictedCovariance,localAcc] = KalmanFilterHyperloop( prevState, prevCovariance, IMUData, sensorData, execution, sensorUse,numberUsed,stripCounts,globals,pod,tube )
+function [predictedState, predictedCovariance,localAcc] = KalmanFilterHyperloop( prevState, prevCovariance, IMUData, sensorData, execution, sensorUse,numberUsed,timestep,stripCounts,globals,pod,tube )
 
 % globals = globalData();
 % pod = podData();
@@ -116,10 +116,22 @@ Rot=[1-2*q2^2-2*q3^2 2*(q1*q2-q0*q3) 2*(q1*q3+q0*q2);...
 %        0 0 0 0 0 0 0 1 0 0;...
 %        0 0 0 0 0 0 0 0 1 0;...
 %        0 0 0 0 0 0 0 0 0 1;];
-
-   Fk = [1 0 0 globals.kalmanTimestep 0 0 0 0 0 0;...
-       0 1 0 0 globals.kalmanTimestep 0 0 0 0 0;...
-       0 0 1 0 0 globals.kalmanTimestep 0 0 0 0;...
+% 
+%    Fk = [1 0 0 globals.kalmanTimestep 0 0 0 0 0 0;...
+%        0 1 0 0 globals.kalmanTimestep 0 0 0 0 0;...
+%        0 0 1 0 0 globals.kalmanTimestep 0 0 0 0;...
+%        0 0 0 1 0 0 globals.kalmanTimestep*(2*q2*ayL+2*q3*azL) globals.kalmanTimestep*(-4*q2*axL+2*q1*ayL+2*q0*azL) globals.kalmanTimestep*(-4*q3*axL-2*q0*ayL+2*q1*azL) globals.kalmanTimestep*(-2*q3*ayL+2*q2*azL);...
+%        0 0 0 0 1 0 globals.kalmanTimestep*(2*q2*axL-4*q1*ayL-2*q0*azL) globals.kalmanTimestep*(2*q1*axL+2*q3*azL) globals.kalmanTimestep*(2*q0*axL-4*q3*ayL+2*q2*azL) globals.kalmanTimestep*(2*q3*axL-2*q1*azL);...
+%        0 0 0 0 0 1 globals.kalmanTimestep*(2*q3*axL+2*q0*ayL-4*q1*azL) globals.kalmanTimestep*(-2*q0*axL+2*q3*ayL-4*q2*azL) globals.kalmanTimestep*(2*q1*axL+2*q2*ayL) globals.kalmanTimestep*(-2*q2*axL+2*q1*ayL);...
+%        0 0 0 0 0 0 1 globals.kalmanTimestep*omegaZ/2 -globals.kalmanTimestep*omegaY/2 globals.kalmanTimestep*omegaX/2;...
+%        0 0 0 0 0 0 -globals.kalmanTimestep*omegaZ/2 1 globals.kalmanTimestep*omegaX/2 globals.kalmanTimestep*omegaY/2;...
+%        0 0 0 0 0 0 globals.kalmanTimestep*omegaY/2 -globals.kalmanTimestep*omegaX/2 1 globals.kalmanTimestep*omegaZ/2;...
+%        0 0 0 0 0 0 -globals.kalmanTimestep*omegaX/2 -globals.kalmanTimestep*omegaY/2 -globals.kalmanTimestep*omegaZ/2 1;];
+   
+   
+   Fk = [1 0 0 globals.kalmanTimestep 0 0 globals.kalmanTimestep^2*0.5*(2*q2*ayL+2*q3*azL) globals.kalmanTimestep^2*0.5*(-4*q2*axL+2*q1*ayL+2*q0*azL) globals.kalmanTimestep^2*0.5*(-4*q3*axL-2*q0*ayL+2*q1*azL) globals.kalmanTimestep^2*0.5*(-2*q3*ayL+2*q2*azL);...
+       0 1 0 0 globals.kalmanTimestep 0 globals.kalmanTimestep^2*0.5*(2*q2*axL-4*q1*ayL-2*q0*azL) globals.kalmanTimestep^2*0.5*(2*q1*axL+2*q3*azL) globals.kalmanTimestep^2*0.5*(2*q0*axL-4*q3*ayL+2*q2*azL) globals.kalmanTimestep^2*0.5*(2*q3*axL-2*q1*azL);...;...
+       0 0 1 0 0 globals.kalmanTimestep globals.kalmanTimestep^2*0.5*(2*q3*axL+2*q0*ayL-4*q1*azL) globals.kalmanTimestep^2*0.5*(-2*q0*axL+2*q3*ayL-4*q2*azL) globals.kalmanTimestep^2*0.5*(2*q1*axL+2*q2*ayL) globals.kalmanTimestep^2*0.5*(-2*q2*axL+2*q1*ayL);...
        0 0 0 1 0 0 globals.kalmanTimestep*(2*q2*ayL+2*q3*azL) globals.kalmanTimestep*(-4*q2*axL+2*q1*ayL+2*q0*azL) globals.kalmanTimestep*(-4*q3*axL-2*q0*ayL+2*q1*azL) globals.kalmanTimestep*(-2*q3*ayL+2*q2*azL);...
        0 0 0 0 1 0 globals.kalmanTimestep*(2*q2*axL-4*q1*ayL-2*q0*azL) globals.kalmanTimestep*(2*q1*axL+2*q3*azL) globals.kalmanTimestep*(2*q0*axL-4*q3*ayL+2*q2*azL) globals.kalmanTimestep*(2*q3*axL-2*q1*azL);...
        0 0 0 0 0 1 globals.kalmanTimestep*(2*q3*axL+2*q0*ayL-4*q1*azL) globals.kalmanTimestep*(-2*q0*axL+2*q3*ayL-4*q2*azL) globals.kalmanTimestep*(2*q1*axL+2*q2*ayL) globals.kalmanTimestep*(-2*q2*axL+2*q1*ayL);...
@@ -133,9 +145,9 @@ Rot=[1-2*q2^2-2*q3^2 2*(q1*q2-q0*q3) 2*(q1*q3+q0*q2);...
 
  %Bk matrix, multiplied to the control vector (currently IMU) in order
  %to also predict the next state of the pod
- Bk=[ 0 0 0 0 0 0;...
-      0 0 0 0 0 0;...
-      0 0 0 0 0 0;...
+ Bk=[ Rot(1,1)*globals.kalmanTimestep*0.5 globals.kalmanTimestep*0.5*Rot(1,2) globals.kalmanTimestep*0.5*Rot(1,3) 0 0 0;...
+      globals.kalmanTimestep*0.5*Rot(2,1) globals.kalmanTimestep*0.5*Rot(2,2) globals.kalmanTimestep*0.5*Rot(2,3) 0 0 0;...
+      globals.kalmanTimestep*0.5*Rot(3,1) globals.kalmanTimestep*0.5*Rot(3,2) globals.kalmanTimestep*0.5*Rot(3,3) 0 0 0;...
       Rot(1,1) Rot(1,2) Rot(1,3) 0 0 0;...
       Rot(2,1) Rot(2,2) Rot(2,3) 0 0 0;...
       Rot(3,1) Rot(3,2) Rot(3,3) 0 0 0;... %drop gravity term (constants=0 for this Jacobian)
@@ -174,7 +186,13 @@ OmegaMatrix=[0 omegaZ -omegaY omegaX;...
 % Wk=(wk*wk')*(k~=1)+diag([wk])*(k==1);%diag(wk);
 %Experimental determination bit ends%
 
-Wk=zeros(10,10);
+
+
+
+localAcc=(Rot*uk(1:3))-[0;0;globals.gravity;];
+
+
+Wk=diag(([localAcc'.^2 zeros(1,7)]*globals.kalmanTimestep^4)/36); %this needs to be improved
 
 
 %this needs to be determined based on IMU error
@@ -191,11 +209,14 @@ Wk=zeros(10,10);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % PREDICTION STEP
+% 
+% xkp1k=xkk+globals.kalmanTimestep*[  xkk(4:6);...
+%                        localAcc;...
+%                        (1/2).*(OmegaMatrix*xkk(7:10));];  %prediction step of the state 
 
-localAcc=(Rot*uk(1:3))-[0;0;globals.gravity;];
-xkp1k=xkk+globals.kalmanTimestep*[  xkk(4:6);...
+xkp1k=xkk+globals.kalmanTimestep*[  (xkk(4:6)+globals.kalmanTimestep*0.5*localAcc);...
                        localAcc;...
-                       (1/2).*(OmegaMatrix*xkk(7:10));];  %prediction step of the state 
+                       (1/2).*(OmegaMatrix*xkk(7:10))];  %prediction step of the state 
 
 Pkp1k=Fk*Pkk*Fk'+Bk*Qk*Bk'+Wk; %prediction step of the error, needs to be experimentally determined 
 
@@ -249,7 +270,7 @@ if execution(1)==1 && numberUsed(1)~=0
 %     disp(H1kp1);
 %     disp(H1kp1*Pkp1k*H1kp1');
 %     disp(H1kp1*Pkp1k*H1kp1'+S1kp1);
-    K1kp1=Pkp1k*H1kp1'/(H1kp1*Pkp1k*H1kp1'+S1kp1);
+    K1kp1=Pkp1k*H1kp1'/(H1kp1*Pkp1k*H1kp1'+S1kp1)
 
 
     h1kp1=sz1'-trackHeight; %perpendicular to track
@@ -295,7 +316,7 @@ if execution(2)==1 && numberUsed(2)~=0
 %     (Rot2(3,3)*dd2dq1'-((sz2+railTopHeight)*-4*q21))/((Rot2(3,3))^2) (Rot2(3,3)*dd2dq2'-((sz2+railTopHeight)*-4*q22))/((Rot2(3,3))^2) (Rot2(3,3)*dd2dq3'-((sz2+railTopHeight)*0)/((Rot2(3,3))^2) (Rot2(3,3)*dd2dq0'-((sz2+railTopHeight)*0))/((Rot2(3,3))^2)]; %normal to pod bottom
 
     S2kp1=diag((globals.distDownRailCovConst(distDownRailUse)+globals.distDownRailCovLin(distDownRailUse).*abs(z2kp1-globals.distDownRailCovZero(distDownRailUse)))); %Experimentally determined
-    K2kp1=P1kp1kp1*H2kp1'/(H2kp1*P1kp1kp1*H2kp1'+S2kp1);
+    K2kp1=P1kp1kp1*H2kp1'/(H2kp1*P1kp1kp1*H2kp1'+S2kp1)
 
     
     h2kp1=sz2'-railTopHeight; %perpendicular to track
@@ -344,7 +365,7 @@ if execution(3)==1 && numberUsed(3)~=0
 %     H3kp1=[0 0 ones(5,1)/Rot3(2,2) 0 0 0 (Rot3(2,2)*dd3dq1'-((sy3-(thicknessOfRail/2))*-4*q31))/((Rot3(2,2))^2) (Rot3(2,2)*dd3dq2'-((sy3-(thicknessOfRail/2))*0))/((Rot3(2,2))^2) (Rot3(2,2)*dd3dq3'-((sy3-(thicknessOfRail/2))*-4*q33))/((Rot3(2,2))^2) (Rot3(2,2)*dd3dq0'-((sy3-(thicknessOfRail/2))*0))/((Rot3(2,2))^2)]; %normal to pod side
 
     S3kp1=diag(globals.distSideCovConst(distSideUse)+globals.distSideCovLin(distSideUse).*abs(z3kp1-globals.distSideCovZero(distSideUse))); %Experimentally determined
-    K3kp1=P2kp1kp1*H3kp1'/(H3kp1*P2kp1kp1*H3kp1'+S3kp1);
+    K3kp1=P2kp1kp1*H3kp1'/(H3kp1*P2kp1kp1*H3kp1'+S3kp1)
 
     
     h3kp1=sy3'-(thicknessOfRail/2);%perpendicular to rail side
@@ -407,7 +428,7 @@ if execution(4)==1 && numberUsed(4)~=0
     
     H4kp1=[0 0 0 ddP4dvx ddP4dvy ddP4dvz ddP4dq1 ddP4dq2 ddP4dq3 ddP4dq0];
     S4kp1=diag(globals.pitotCovConst+globals.pitotCovLin.*abs(z4kp1-globals.pitotCovZero)); %Experimentally determined
-    K4kp1=P3kp1kp1*H4kp1'/(H4kp1*P3kp1kp1*H4kp1'+S4kp1);
+    K4kp1=P3kp1kp1*H4kp1'/(H4kp1*P3kp1kp1*H4kp1'+S4kp1)
 
     
     h4kp1=0.5*globals.airDensity*(dot(vPod4,b4))^2;
@@ -433,8 +454,8 @@ if execution(5)==1 && numberUsed(5)~=0
     
     z5kp1 = sensorData((peTopUse),5);
     
-    p5=pod.topPhotoelectricPosition(peTopUse);
-    b5=pod.topPhotoelectricDirection(peTopUse);
+    p5=pod.topPhotoElectricPositions(:,peTopUse);
+    b5=pod.topPhotoElectricDirections(:,peTopUse);
     
     % Getting terms from the previous state prediction to use in calculation
     rx5=x4kp1kp1(1);
@@ -452,9 +473,8 @@ if execution(5)==1 && numberUsed(5)~=0
     sy5=(Rot5(2,:)*p5 + ry5)';
     sz5=(Rot5(3,:)*p5 + rz5)';
     
-    
-    
-    nextStrips5=tube.stripDistances(stripCounts(1:3)+1);
+   
+    nextStrips5=tube.stripDistances(stripCounts(peTopUse)+1)';
     
     %derivatives of the rotation matrix w.r.t. each quaternion to be used to calculate the jacobian
     dRot5dq1=[0 2*q52 2*q53;...
@@ -475,7 +495,8 @@ if execution(5)==1 && numberUsed(5)~=0
      
     phi5=pod.photoElectricTilt; %could add pitch here
     l5=sin(pod.angleOfPESensitivity)./(cos(phi5).*cos(pod.angleOfPESensitivity+phi5));
-    v5=(pod.peToWall(1:3)); %could be updated for tube curvature
+    v5=(pod.peToWall(peTopUse)); %could be updated for tube curvature
+%     v5=v5(peTopUse);
     m5=pi./(tube.stripWidth/2 + v5.*l5);
     
     xA5=v5.*(tan(phi5)+l5);
@@ -491,9 +512,9 @@ if execution(5)==1 && numberUsed(5)~=0
     dg5dq0=-0.5*pod.peMax.*sin(m5.*(v5.*tan(phi5)+sx5-nextStrips5)).*m5.*(dRot5dq0(1,:)*p5)';
     
     
-    H5kp1=[dg5drx zeros(3,1) zeros(3,1) zeros(3,1) zeros(3,1) zeros(3,1) dg5dq1 dg5dq2 dg5dq3 dg5dq0].*(((xA5+sx5+tube.stripWidth/2>nextStrips5)*((xB5+sx5-tube.stripWidth/2)<nextStrips5))*ones(1,10));
-    S5kp1=VerticalPECovariance; %Experimentally determined
-    K5kp1=P4kp1kp1*H5kp1'/(H5kp1*P4kp1kp1*H5kp1'+S5kp1); %Kalman Gain
+    H5kp1=[dg5drx zeros(numberUsed(5),1) zeros(numberUsed(5),1) zeros(numberUsed(5),1) zeros(numberUsed(5),1) zeros(numberUsed(5),1) dg5dq1 dg5dq2 dg5dq3 dg5dq0].*(((xA5+sx5+tube.stripWidth/2>nextStrips5).*((xB5+sx5-tube.stripWidth/2)<nextStrips5))*ones(1,10));
+    S5kp1=diag(globals.peTopCovConst(peTopUse)+globals.peTopCovLin(peTopUse).*abs(z5kp1-globals.peTopCovZero(peTopUse))); %Experimentally determined
+    K5kp1=P4kp1kp1*H5kp1'/(H5kp1*P4kp1kp1*H5kp1'+S5kp1) %Kalman Gain
 
     g5=0.5*pod.peMax*(1+cos(m5.*((v5).*tan(phi5)+sx5-nextStrips5)));
     
@@ -520,8 +541,8 @@ if execution(6)==1 && numberUsed(6)~=0
     peLeftUse=sensorUse(1:numberUsed(6),6);
     
     
-    p6=pod.leftPhotoelectricPosition(peLeftUse);
-    b6=pod.leftPhotoelectricDirection(peLeftUse);
+    p6=pod.leftPhotoElectricPositions(:,peLeftUse);
+    b6=pod.leftPhotoElectricDirections(:,peLeftUse);
     z6kp1 = sensorData(peLeftUse,6);
     
     % Getting terms from the previous state prediction to use in calculations
@@ -541,7 +562,7 @@ if execution(6)==1 && numberUsed(6)~=0
     sz6=(Rot6(3,:)*p6 + rz6)';
     
     
-    nextStrips6=tube.stripDistances(stripCounts(4:6)+1);
+    nextStrips6=tube.stripDistances(stripCounts(peLeftUse+3)+1)';
     
     %derivatives of the rotation matrix w.r.t. each quaternion to be used to calculate the jacobian
     dRot6dq1=[0 2*q62 2*q63;...
@@ -562,24 +583,26 @@ if execution(6)==1 && numberUsed(6)~=0
      
     phi6=pod.photoElectricTilt; %could add yaw here (also pitch)
     l6=sin(pod.angleOfPESensitivity)./(cos(phi6).*cos(pod.angleOfPESensitivity+phi6));
-    v6=(pod.peToWall(4:6)).^2+(sy6-p6(2,:)).^2 -sqrt(2).*(sy6-p6(2,:)).*pod.peToWall(4:6); 
+    
+    v6=(pod.peToWall(peLeftUse+3)).^2+(sy6-p6(2,:)').^2 -sqrt(2).*(sy6-p6(2,:)').*pod.peToWall(peLeftUse+3); 
     m6=pi./(tube.stripWidth/2 + v6.*l6);
     
     xA6=v6.*(tan(phi6)+l6);
     xB6=v6.*(tan(phi6)-l6);
     %Finally calculating the actual terms for the Jacobian
     dg6drx=-0.5*pod.peMax.*sin(m6.*(v6.*tan(phi6)+sx6-nextStrips6)).*m6;
-    dg6dry=-0.5*pod.peMax.*sin(m6.*(v6.*tan(phi6)+sx6-nextStrips6)).*((-pi*l6.*(2*(sy6-p6(2,:))-sqrt(2).*pod.peToWall(4:6))/((tube.stripWidth.^2+v6.*l6).^2)).*(v6.*tan(phi6)+sx6-nextStrips6) + m6.*((2*(sy6-p6(2,:))-sqrt(2).*pod.peToWall(4:6)).*tan(phi6)));
     
-    dg6dq1=-0.5*pod.peMax.*sin(m6.*(v6.*tan(phi6)+sx6-nextStrips6)).*(m6.*((dRot6dq1(1,:)*p6)'+ tan(phi6).* (2*(sy6-p6(2,:))*(dRot6dq1(2,:)*p6)'-sqrt(2)*pod.peToWall(4:6).*(dRot6dq1(2,:)*p6)')) + ((-pi.*l5.*(2*(sy6-p6(2,:))*(dRot6dq1(2,:)*p6)'-sqrt(2)*pod.peToWall(4:6).*(dRot6dq1(2,:)*p6)'))./((tube.stripWidth/2 + v6.*l6).^2)).*(v6.*tan(phi6)+sx6-nextStrips6));
-    dg6dq2=-0.5*pod.peMax.*sin(m6.*(v6.*tan(phi6)+sx6-nextStrips6)).*(m6.*((dRot6dq2(1,:)*p6)'+ tan(phi6).* (2*(sy6-p6(2,:))*(dRot6dq2(2,:)*p6)'-sqrt(2)*pod.peToWall(4:6).*(dRot6dq2(2,:)*p6)')) + ((-pi.*l5.*(2*(sy6-p6(2,:))*(dRot6dq2(2,:)*p6)'-sqrt(2)*pod.peToWall(4:6).*(dRot6dq2(2,:)*p6)'))./((tube.stripWidth/2 + v6.*l6).^2)).*(v6.*tan(phi6)+sx6-nextStrips6));
-    dg6dq3=-0.5*pod.peMax.*sin(m6.*(v6.*tan(phi6)+sx6-nextStrips6)).*(m6.*((dRot6dq3(1,:)*p6)'+ tan(phi6).* (2*(sy6-p6(2,:))*(dRot6dq3(2,:)*p6)'-sqrt(2)*pod.peToWall(4:6).*(dRot6dq3(2,:)*p6)')) + ((-pi.*l5.*(2*(sy6-p6(2,:))*(dRot6dq3(2,:)*p6)'-sqrt(2)*pod.peToWall(4:6).*(dRot6dq3(2,:)*p6)'))./((tube.stripWidth/2 + v6.*l6).^2)).*(v6.*tan(phi6)+sx6-nextStrips6));
-    dg6dq0=-0.5*pod.peMax.*sin(m6.*(v6.*tan(phi6)+sx6-nextStrips6)).*(m6.*((dRot6dq0(1,:)*p6)'+ tan(phi6).* (2*(sy6-p6(2,:))*(dRot6dq0(2,:)*p6)'-sqrt(2)*pod.peToWall(4:6).*(dRot6dq0(2,:)*p6)')) + ((-pi.*l5.*(2*(sy6-p6(2,:))*(dRot6dq0(2,:)*p6)'-sqrt(2)*pod.peToWall(4:6).*(dRot6dq0(2,:)*p6)'))./((tube.stripWidth/2 + v6.*l6).^2)).*(v6.*tan(phi6)+sx6-nextStrips6));
+    dg6dry=-0.5*pod.peMax.*sin(m6.*(v6.*tan(phi6)+sx6-nextStrips6)).*((-pi*l6.*(2*(sy6-p6(2,:)')-sqrt(2).*pod.peToWall(peLeftUse+3))./((tube.stripWidth.^2+v6.*l6).^2)).*(v6.*tan(phi6)+sx6-nextStrips6) + m6.*((2*(sy6-p6(2,:)')-sqrt(2).*pod.peToWall(peLeftUse+3)).*tan(phi6)));
+    
+    dg6dq1=-0.5*pod.peMax.*sin(m6.*(v6.*tan(phi6)+sx6-nextStrips6)).*(m6.*((dRot6dq1(1,:)*p6)'+ tan(phi6).* (2*(sy6-p6(2,:)').*(dRot6dq1(2,:)*p6)'-sqrt(2)*pod.peToWall(peLeftUse+3).*(dRot6dq1(2,:)*p6)')) + ((-pi.*l6.*(2*(sy6-p6(2,:)').*(dRot6dq1(2,:)*p6)'-sqrt(2)*pod.peToWall(peLeftUse+3).*(dRot6dq1(2,:)*p6)'))./((tube.stripWidth/2 + v6.*l6).^2)).*(v6.*tan(phi6)+sx6-nextStrips6));
+    dg6dq2=-0.5*pod.peMax.*sin(m6.*(v6.*tan(phi6)+sx6-nextStrips6)).*(m6.*((dRot6dq2(1,:)*p6)'+ tan(phi6).* (2*(sy6-p6(2,:)').*(dRot6dq2(2,:)*p6)'-sqrt(2)*pod.peToWall(peLeftUse+3).*(dRot6dq2(2,:)*p6)')) + ((-pi.*l6.*(2*(sy6-p6(2,:)').*(dRot6dq2(2,:)*p6)'-sqrt(2)*pod.peToWall(peLeftUse+3).*(dRot6dq2(2,:)*p6)'))./((tube.stripWidth/2 + v6.*l6).^2)).*(v6.*tan(phi6)+sx6-nextStrips6));
+    dg6dq3=-0.5*pod.peMax.*sin(m6.*(v6.*tan(phi6)+sx6-nextStrips6)).*(m6.*((dRot6dq3(1,:)*p6)'+ tan(phi6).* (2*(sy6-p6(2,:)').*(dRot6dq3(2,:)*p6)'-sqrt(2)*pod.peToWall(peLeftUse+3).*(dRot6dq3(2,:)*p6)')) + ((-pi.*l6.*(2*(sy6-p6(2,:)').*(dRot6dq3(2,:)*p6)'-sqrt(2)*pod.peToWall(peLeftUse+3).*(dRot6dq3(2,:)*p6)'))./((tube.stripWidth/2 + v6.*l6).^2)).*(v6.*tan(phi6)+sx6-nextStrips6));
+    dg6dq0=-0.5*pod.peMax.*sin(m6.*(v6.*tan(phi6)+sx6-nextStrips6)).*(m6.*((dRot6dq0(1,:)*p6)'+ tan(phi6).* (2*(sy6-p6(2,:)').*(dRot6dq0(2,:)*p6)'-sqrt(2)*pod.peToWall(peLeftUse+3).*(dRot6dq0(2,:)*p6)')) + ((-pi.*l6.*(2*(sy6-p6(2,:)').*(dRot6dq0(2,:)*p6)'-sqrt(2)*pod.peToWall(peLeftUse+3).*(dRot6dq0(2,:)*p6)'))./((tube.stripWidth/2 + v6.*l6).^2)).*(v6.*tan(phi6)+sx6-nextStrips6));
     
     
-    H6kp1=[dg6drx dg6dry zeros(3,1) zeros(3,1) zeros(3,1) zeros(3,1) dg6dq1 dg6dq2 dg6dq3 dg6dq0].*(((xA6+sx6+tube.stripWidth/2>nextStrips6)*((xB6+sx6-tube.stripWidth/2)<nextStrips6))*ones(1,10))
-    S6kp1=VerticalPECovariance; %Experimentally determined
-    K6kp1=P5kp1kp1*H6kp1'/(H6kp1*P5kp1kp1*H6kp1'+S6kp1); %Kalman Gain
+    H6kp1=[dg6drx dg6dry zeros(numberUsed(6),1) zeros(numberUsed(6),1) zeros(numberUsed(6),1) zeros(numberUsed(6),1) dg6dq1 dg6dq2 dg6dq3 dg6dq0].*(((xA6+sx6+tube.stripWidth/2>nextStrips6).*((xB6+sx6-tube.stripWidth/2)<nextStrips6))*ones(1,10));
+    S6kp1=diag(globals.peLeftCovConst(peLeftUse)+globals.peLeftCovLin(peLeftUse).*abs(z6kp1-globals.peLeftCovZero(peLeftUse))); %Experimentally determined
+    K6kp1=P5kp1kp1*H6kp1'/(H6kp1*P5kp1kp1*H6kp1'+S6kp1) %Kalman Gain
 
     g6=0.5*pod.peMax*(1+cos(m6.*((v6).*tan(phi6)+sx6-nextStrips6)));
     
@@ -604,9 +627,9 @@ if execution(7)==1 && numberUsed(7)~=0
     peRightUse=sensorUse(1:numberUsed(7),7);
     
     
-    p7=pod.rightPhotoelectricPosition(peRightUse);
-    b7=pod.rightPhotoelectricDirection(peRightUse);
-    z7kp1 = sensorData(peLeftUse,7);
+    p7=pod.rightPhotoElectricPositions(:,peRightUse);
+    b7=pod.rightPhotoElectricDirections(:,peRightUse);
+    z7kp1 = sensorData(peRightUse,7);
     
     % Getting terms from the previous state prediction to use in calculations
     rx7=x6kp1kp1(1);
@@ -620,11 +643,11 @@ if execution(7)==1 && numberUsed(7)~=0
     Rot7=[1-2*q72^2-2*q73^2 2*(q71*q72-q70*q73) 2*(q71*q73+q70*q72);...
      2*(q71*q72+q70*q73) 1-2*q71^2-2*q73^2 2*(q72*q73-q70*q71);...
      2*(q71*q73-q70*q72) 2*(q72*q73+q70*q71) 1-2*q71^2-2*q72^2;];
-    sx7=(Rot7(1,:)*p7 + rx7);
-    sy7=(Rot7(2,:)*p7 + ry7);
-    sz7=(Rot7(3,:)*p7 + rz7);
+    sx7=(Rot7(1,:)*p7 + rx7)';
+    sy7=(Rot7(2,:)*p7 + ry7)';
+    sz7=(Rot7(3,:)*p7 + rz7)';
     
-    nextStrips7=tube.stripDistances(stripCounts(7:9)+1);
+    nextStrips7=tube.stripDistances(stripCounts(peRightUse+6)+1)';
     
     %derivatives of the rotation matrix w.r.t. each quaternion to be used to calculate the jacobian
     dRot7dq1=[0 2*q72 2*q73;...
@@ -645,24 +668,24 @@ if execution(7)==1 && numberUsed(7)~=0
      
     phi7=pod.photoElectricTilt; %could add yaw here (also pitch)
     l7=sin(pod.angleOfPESensitivity)./(cos(phi7).*cos(pod.angleOfPESensitivity+phi7));
-    v7=(pod.peToWall(7:9)).^2+(sy7-p7(2,:)).^2 -sqrt(2).*(sy7-p7(2,:)).*pod.peToWall(7:9); 
+    v7=(pod.peToWall(peRightUse+6)).^2+(sy7-p7(2,:)').^2 -sqrt(2).*(sy7-p7(2,:)').*pod.peToWall(peRightUse+6); 
     m7=pi./(tube.stripWidth/2 + v7.*l7);
     
     xA7=v7.*(tan(phi7)+l7);
     xB7=v7.*(tan(phi7)-l7);
     %Finally calculating the actual terms for the Jacobian
     dg7drx=-0.5*pod.peMax.*sin(m7.*(v7.*tan(phi7)+sx7-nextStrips7)).*m7;
-    dg7dry=-0.5*pod.peMax.*sin(m7.*(v7.*tan(phi7)+sx7-nextStrips7)).*((-pi*l7.*(2*(sy7-p7(2,:))-sqrt(2).*pod.peToWall(7:9))/((tube.stripWidth.^2+v7.*l7).^2)).*(v7.*tan(phi7)+sx7-nextStrips7) + m7.*((2*(sy7-p7(2,:))-sqrt(2).*pod.peToWall(7:9)).*tan(phi7)));
+    dg7dry=-0.5*pod.peMax.*sin(m7.*(v7.*tan(phi7)+sx7-nextStrips7)).*((-pi*l7.*(2*(sy7-p7(2,:)')-sqrt(2).*pod.peToWall(peRightUse+6))./((tube.stripWidth.^2+v7.*l7).^2)).*(v7.*tan(phi7)+sx7-nextStrips7) + m7.*((2*(sy7-p7(2,:)')-sqrt(2).*pod.peToWall(peRightUse+6)).*tan(phi7)));
     
-    dg7dq1=-0.5*pod.peMax.*sin(m7.*(v7.*tan(phi7)+sx7-nextStrips7)).*(m7.*((dRot7dq1(1,:)*p7)'+ tan(phi7).* (2*(sy7-p7(2,:))*(dRot7dq1(2,:)*p7)'-sqrt(2)*pod.peToWall(7:9).*(dRot7dq1(2,:)*p7)')) + ((-pi.*l5.*(2*(sy7-p7(2,:))*(dRot7dq1(2,:)*p7)'-sqrt(2)*pod.peToWall(7:9).*(dRot7dq1(2,:)*p7)'))./((tube.stripWidth/2 + v7.*l7).^2)).*(v7.*tan(phi7)+sx7-nextStrips7));
-    dg7dq2=-0.5*pod.peMax.*sin(m7.*(v7.*tan(phi7)+sx7-nextStrips7)).*(m7.*((dRot7dq2(1,:)*p7)'+ tan(phi7).* (2*(sy7-p7(2,:))*(dRot7dq2(2,:)*p7)'-sqrt(2)*pod.peToWall(7:9).*(dRot7dq2(2,:)*p7)')) + ((-pi.*l5.*(2*(sy7-p7(2,:))*(dRot7dq2(2,:)*p7)'-sqrt(2)*pod.peToWall(7:9).*(dRot7dq2(2,:)*p7)'))./((tube.stripWidth/2 + v7.*l7).^2)).*(v7.*tan(phi7)+sx7-nextStrips7));
-    dg7dq3=-0.5*pod.peMax.*sin(m7.*(v7.*tan(phi7)+sx7-nextStrips7)).*(m7.*((dRot7dq3(1,:)*p7)'+ tan(phi7).* (2*(sy7-p7(2,:))*(dRot7dq3(2,:)*p7)'-sqrt(2)*pod.peToWall(7:9).*(dRot7dq3(2,:)*p7)')) + ((-pi.*l5.*(2*(sy7-p7(2,:))*(dRot7dq3(2,:)*p7)'-sqrt(2)*pod.peToWall(7:9).*(dRot7dq3(2,:)*p7)'))./((tube.stripWidth/2 + v7.*l7).^2)).*(v7.*tan(phi7)+sx7-nextStrips7));
-    dg7dq0=-0.5*pod.peMax.*sin(m7.*(v7.*tan(phi7)+sx7-nextStrips7)).*(m7.*((dRot7dq0(1,:)*p7)'+ tan(phi7).* (2*(sy7-p7(2,:))*(dRot7dq0(2,:)*p7)'-sqrt(2)*pod.peToWall(7:9).*(dRot7dq0(2,:)*p7)')) + ((-pi.*l5.*(2*(sy7-p7(2,:))*(dRot7dq0(2,:)*p7)'-sqrt(2)*pod.peToWall(7:9).*(dRot7dq0(2,:)*p7)'))./((tube.stripWidth/2 + v7.*l7).^2)).*(v7.*tan(phi7)+sx7-nextStrips7));
+    dg7dq1=-0.5*pod.peMax.*sin(m7.*(v7.*tan(phi7)+sx7-nextStrips7)).*(m7.*((dRot7dq1(1,:)*p7)'+ tan(phi7).* (2*(sy7-p7(2,:)').*(dRot7dq1(2,:)*p7)'-sqrt(2)*pod.peToWall(peRightUse+6).*(dRot7dq1(2,:)*p7)')) + ((-pi.*l7.*(2*(sy7-p7(2,:)').*(dRot7dq1(2,:)*p7)'-sqrt(2)*pod.peToWall(peRightUse+6).*(dRot7dq1(2,:)*p7)'))./((tube.stripWidth/2 + v7.*l7).^2)).*(v7.*tan(phi7)+sx7-nextStrips7));
+    dg7dq2=-0.5*pod.peMax.*sin(m7.*(v7.*tan(phi7)+sx7-nextStrips7)).*(m7.*((dRot7dq2(1,:)*p7)'+ tan(phi7).* (2*(sy7-p7(2,:)').*(dRot7dq2(2,:)*p7)'-sqrt(2)*pod.peToWall(peRightUse+6).*(dRot7dq2(2,:)*p7)')) + ((-pi.*l7.*(2*(sy7-p7(2,:)').*(dRot7dq2(2,:)*p7)'-sqrt(2)*pod.peToWall(peRightUse+6).*(dRot7dq2(2,:)*p7)'))./((tube.stripWidth/2 + v7.*l7).^2)).*(v7.*tan(phi7)+sx7-nextStrips7));
+    dg7dq3=-0.5*pod.peMax.*sin(m7.*(v7.*tan(phi7)+sx7-nextStrips7)).*(m7.*((dRot7dq3(1,:)*p7)'+ tan(phi7).* (2*(sy7-p7(2,:)').*(dRot7dq3(2,:)*p7)'-sqrt(2)*pod.peToWall(peRightUse+6).*(dRot7dq3(2,:)*p7)')) + ((-pi.*l7.*(2*(sy7-p7(2,:)').*(dRot7dq3(2,:)*p7)'-sqrt(2)*pod.peToWall(peRightUse+6).*(dRot7dq3(2,:)*p7)'))./((tube.stripWidth/2 + v7.*l7).^2)).*(v7.*tan(phi7)+sx7-nextStrips7));
+    dg7dq0=-0.5*pod.peMax.*sin(m7.*(v7.*tan(phi7)+sx7-nextStrips7)).*(m7.*((dRot7dq0(1,:)*p7)'+ tan(phi7).* (2*(sy7-p7(2,:)').*(dRot7dq0(2,:)*p7)'-sqrt(2)*pod.peToWall(peRightUse+6).*(dRot7dq0(2,:)*p7)')) + ((-pi.*l7.*(2*(sy7-p7(2,:)').*(dRot7dq0(2,:)*p7)'-sqrt(2)*pod.peToWall(peRightUse+6).*(dRot7dq0(2,:)*p7)'))./((tube.stripWidth/2 + v7.*l7).^2)).*(v7.*tan(phi7)+sx7-nextStrips7));
     
     
-    H7kp1=[dg7drx dg7dry zeros(3,1) zeros(3,1) zeros(3,1) zeros(3,1) dg7dq1 dg7dq2 dg7dq3 dg7dq0].*(((xA7+sx7+tube.stripWidth/2>nextStrips7)*((xB7+sx7-tube.stripWidth/2)<nextStrips7))*ones(1,10));
-    S7kp1=VerticalPECovariance; %Experimentally determined
-    K7kp1=P6kp1kp1*H7kp1'/(H7kp1*P6kp1kp1*H7kp1'+S7kp1); %Kalman Gain
+    H7kp1=[dg7drx dg7dry zeros(numberUsed(7),1) zeros(numberUsed(7),1) zeros(numberUsed(7),1) zeros(numberUsed(7),1) dg7dq1 dg7dq2 dg7dq3 dg7dq0].*(((xA7+sx7+tube.stripWidth/2>nextStrips7).*((xB7+sx7-tube.stripWidth/2)<nextStrips7))*ones(1,10));
+    S7kp1=diag(globals.peRightCovConst(peRightUse)+globals.peRightCovLin(peRightUse).*abs(z7kp1-globals.peRightCovZero(peRightUse))); %Experimentally determined
+    K7kp1=P6kp1kp1*H7kp1'/(H7kp1*P6kp1kp1*H7kp1'+S7kp1) %Kalman Gain
 
     g7=0.5*pod.peMax*(1+cos(m7.*((v7).*tan(phi7)+sx7-nextStrips7)));
     

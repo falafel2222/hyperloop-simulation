@@ -55,10 +55,11 @@
     
     photoelectricCount=zeros(9,1);
     lastPE=-5*ones(9,1);
-    prevPE=zeros(9,1);
+    prevPE=zeros(9,3);
+    crossIn=zeros(9,1);
 
     
-    peRecord = nan(1,globals.numSteps/kalmanFreq+1);
+    peRecord = nan(9,globals.numSteps/kalmanFreq+1);
     noisyKalmanPosIMU = zeros(3,globals.numSteps/kalmanFreq+1);
     noisyKalmanVelIMU = zeros(3,globals.numSteps/kalmanFreq+1);
     noisyKalmanPosIMU(3,1) = .003;
@@ -84,11 +85,13 @@
 
     
     %%%% For Kalman Filter %%%%    
-    covariance = .001*eye(10);    
+    covariance = diag([0.0001 0.00001 0.0000001 0.00001 0.00001 0.0001 0.0001 0.0001 0.0001 0.0001]);    
     % state is a 10x1 matrix of [position velocity quaternions]
     state = [transPos(:,1)' transVel(:,1)' q(:,1)']';
     kalmanHistory = zeros(10,globals.numSteps/kalmanFreq);
     kalmanHistory(:,1)=state;
+    kalmanVarHistory=zeros(10,globals.numSteps/kalmanFreq);
+    kalmanVarHistory(:,1)=diag(covariance);
     
     
     eBrakesActuated = false;    
@@ -269,13 +272,13 @@
             for i=1:3
                 photoelectricData(i,2) = photoelectricReadingLR(pod.leftPhotoElectricPositions(:,i), state, tube.stripDistances(photoelectricCount(3+i)+1), pod.peToWall(3+i), tube,pod);
             end
-            peRecord(n/kalmanFreq+1)=photoelectricData(2,2);
             for i=1:3
                 photoelectricData(i,3) = photoelectricReadingLR(pod.rightPhotoElectricPositions(:,i), state, tube.stripDistances(photoelectricCount(6+i)+1), pod.peToWall(6+i), tube,pod);
             end
             
-      
-            [photoelectricCount,photoelectricUse,lastPE]=photoelectric(photoelectricCount,photoelectricData,lastPE,prevPE,n*globals.timestep,pod);
+            peRecord(:,n/kalmanFreq+1)=[photoelectricData(1:3,1);photoelectricData(1:3,2);photoelectricData(1:3,3)];
+            
+            [photoelectricCount,photoelectricUse,lastPE,prevPE,crossIn]=photoelectric(photoelectricCount,photoelectricData,lastPE,prevPE,crossIn,n*globals.timestep,pod);
             
             sensorData = [[scanner1dist']...
                 [scanner2dist'; NaN;]...
@@ -284,13 +287,15 @@
                 photoelectricData];
             execution =  [0 0 0 0 0 0 0];
 
-            if mod(n,kalmanFreq*5) == 0
+            if mod(n,kalmanFreq*20) == 0
                 execution(1) = 1;
                 execution(2) = 1;
-                execution(3) = 1;
             end
             
-            if mod(n,kalmanFreq*8) == 0
+            if mod(n,kalmanFreq*20) == 7
+                execution(3) = 1;
+            end
+            if mod(n,kalmanFreq*20) == 14
                 execution(4) = 1;
             end
             
@@ -389,7 +394,7 @@
 
             [sensorUse,numberUsed] = sensorFailureDetection(sensorData,globals,pod,tube);
             
-            [state, covariance,~] = KalmanFilterHyperloop(state, covariance, IMUData, sensorData, execution, sensorUse,numberUsed, n/kalmanFreq,globals,pod,tube);
+            [state, covariance,~] = KalmanFilterHyperloop(state, covariance, IMUData, sensorData, execution, sensorUse,numberUsed, n/kalmanFreq,photoelectricCount,globals,pod,tube);
 %              if mod(n,kalmanFreq*5) == 0
 %                 distance1Pos
 %                 transPos(:,n)
@@ -399,6 +404,7 @@
 %             end
             
             kalmanHistory(:,n/kalmanFreq+1) = state;
+            kalmanVarHistory(:,n/kalmanFreq+1) = diag(covariance);
 %             disp('---------------------')
 %             disp(n/kalmanFreq)
 %             disp(kalmanHistory(3,n/kalmanFreq))
@@ -439,88 +445,108 @@
     display(size(transPos(3,:)))
     figure;
     subplot(3,1,1)
-    plot(kalmanHistory(1,:))
     hold all
-    plot(downsample(transPos(1,:),kalmanFreq));
-    plot(noisyKalmanPosIMU(1,:));
-    legend('Kalman','Physical','IMU')
+    h1=plot(kalmanHistory(1,:),'b');
+    h1a=plot(kalmanHistory(1,:)-sqrt(kalmanVarHistory(1,:)),'b:');
+    h1b=plot(kalmanHistory(1,:)+sqrt(kalmanVarHistory(1,:)),'b:');
+    h2=plot(downsample(transPos(1,:),kalmanFreq),'g');
+    h3=plot(noisyKalmanPosIMU(1,:),'r');
+    legend([h1 h2 h3],{'Kalman','Physical','IMU'})
     title('X-position')
     hold off
     subplot(3,1,2)
-    plot(kalmanHistory(2,:))
     hold all
-    plot(downsample(transPos(2,:),kalmanFreq));
-    plot(noisyKalmanPosIMU(2,:));
-    legend('Kalman','Physical','IMU')
+    h1=plot(kalmanHistory(2,:),'b');
+    h1a=plot(kalmanHistory(2,:)-sqrt(kalmanVarHistory(2,:)),'b:');
+    h1b=plot(kalmanHistory(2,:)+sqrt(kalmanVarHistory(2,:)),'b:');
+    h2=plot(downsample(transPos(2,:),kalmanFreq),'g');
+    h3=plot(noisyKalmanPosIMU(2,:),'r');
+    legend([h1 h2 h3],{'Kalman','Physical','IMU'})
     title('Y-position')
     hold off
     subplot(3,1,3)
-    plot(kalmanHistory(3,:))
     hold all
-    plot(downsample(transPos(3,:),kalmanFreq));
-    plot(noisyKalmanPosIMU(3,:));
-    legend('Kalman','Physical','IMU')
+    h1=plot(kalmanHistory(3,:),'b');
+    h1a=plot(kalmanHistory(3,:)-sqrt(kalmanVarHistory(3,:)),'b:');
+    h1b=plot(kalmanHistory(3,:)+sqrt(kalmanVarHistory(3,:)),'b:');
+    h2=plot(downsample(transPos(3,:),kalmanFreq),'g');
+    h3=plot(noisyKalmanPosIMU(3,:),'r');
+    legend([h1 h2 h3],{'Kalman','Physical','IMU'})
     title('Z-position')
     hold off
     figure;
     subplot(3,1,3)
     hold all
     IMUvReal=noisyKalmanVelIMU(3,1:end-1)-downsample(transVel(3,:),kalmanFreq);
-    plot(kalmanHistory(6,:));
-    plot(downsample(transVel(3,:),kalmanFreq));
-    plot(noisyKalmanVelIMU(3,:));
+    plot(kalmanHistory(6,:),'b');
+    plot(kalmanHistory(6,:)-sqrt(kalmanVarHistory(6,:)),'b:');
+    plot(kalmanHistory(6,:)+sqrt(kalmanVarHistory(6,:)),'b:');
+    plot(downsample(transVel(3,:),kalmanFreq),'g');
+    plot(noisyKalmanVelIMU(3,:),'r');
     title('Z-velocity')
     subplot(3,1,1)
     hold all
 %     IMUvReal=noisyKalmanVelIMU(3,1:end-1)-downsample(transVel(3,:),kalman
 %     Freq);
-    plot(kalmanHistory(4,:))
-    plot(downsample(transVel(1,:),kalmanFreq));
-    plot(noisyKalmanVelIMU(1,:));
+    plot(kalmanHistory(4,:),'b')
+    plot(kalmanHistory(4,:)-sqrt(kalmanVarHistory(4,:)),'b:');
+    plot(kalmanHistory(4,:)+sqrt(kalmanVarHistory(4,:)),'b:');
+    plot(downsample(transVel(1,:),kalmanFreq),'g');
+    plot(noisyKalmanVelIMU(1,:),'r');
     title('X-velocity')
     subplot(3,1,2)
     hold all
 %     IMUvReal=noisyKalmanVelIMU(3,1:end-1)-downsample(transVel(3,:),kalmanFreq);
 
-    plot(kalmanHistory(5,:))
-    plot(downsample(transVel(2,:),kalmanFreq));
-        plot(noisyKalmanVelIMU(2,:));
+    h1=plot(kalmanHistory(5,:),'b');
+    h1a=plot(kalmanHistory(5,:)-sqrt(kalmanVarHistory(5,:)),'b:');
+    h1b=plot(kalmanHistory(5,:)+sqrt(kalmanVarHistory(5,:)),'b:');
+    h2=plot(downsample(transVel(2,:),kalmanFreq),'g');
+    h3=plot(noisyKalmanVelIMU(2,:),'r');
     title('Y-velocity')
     
-    legend('Kalman','Physical','IMU')
+    legend([h1 h2 h3],{'Kalman','Physical','IMU'})
     hold off
     
     figure;
     subplot(4,1,1)
     hold all
-    plot(kalmanHistory(7,:));
-    plot(downsample(q(1,:),kalmanFreq));
-    plot(noisyKalmanQIMU(1,:));
+    plot(kalmanHistory(7,:),'b');
+    plot(kalmanHistory(7,:)-sqrt(kalmanVarHistory(7,:)),'b:');
+    plot(kalmanHistory(7,:)+sqrt(kalmanVarHistory(7,:)),'b:');
+    plot(downsample(q(1,:),kalmanFreq),'g');
+    plot(noisyKalmanQIMU(1,:),'r');
     title('q1')
     subplot(4,1,2)
     hold all
 %     IMUvReal=noisyKalmanVelIMU(3,1:end-1)-downsample(transVel(3,:),kalman
 %     Freq);
-    plot(kalmanHistory(8,:));
-    plot(downsample(q(2,:),kalmanFreq));
-    plot(noisyKalmanQIMU(2,:));
+    plot(kalmanHistory(8,:),'b');
+    plot(kalmanHistory(8,:)-sqrt(kalmanVarHistory(8,:)),'b:');
+    plot(kalmanHistory(8,:)+sqrt(kalmanVarHistory(8,:)),'b:');
+    plot(downsample(q(2,:),kalmanFreq),'g');
+    plot(noisyKalmanQIMU(2,:),'r');
     title('q2')
     subplot(4,1,3)
     hold all
 %     IMUvReal=noisyKalmanVelIMU(3,1:end-1)-downsample(transVel(3,:),kalmanFreq);
 
-  plot(kalmanHistory(9,:));
-    plot(downsample(q(3,:),kalmanFreq));
-    plot(noisyKalmanQIMU(3,:));
+  plot(kalmanHistory(9,:),'b');
+    plot(kalmanHistory(9,:)-sqrt(kalmanVarHistory(9,:)),'b:');
+    plot(kalmanHistory(9,:)+sqrt(kalmanVarHistory(9,:)),'b:');
+    plot(downsample(q(3,:),kalmanFreq),'g');
+    plot(noisyKalmanQIMU(3,:),'r');
     title('q3')
     subplot(4,1,4)
     hold all
-  plot(kalmanHistory(10,:));
-    plot(downsample(q(4,:),kalmanFreq));
-    plot(noisyKalmanQIMU(4,:));
+    h1=plot(kalmanHistory(10,:),'b');
+    h1a=plot(kalmanHistory(10,:)-sqrt(kalmanVarHistory(10,:)),'b:');
+    h1b=plot(kalmanHistory(10,:)+sqrt(kalmanVarHistory(10,:)),'b:');
+    h2=plot(downsample(q(4,:),kalmanFreq),'g');
+    h3=plot(noisyKalmanQIMU(4,:),'r');
     title('q0')
     
-    legend('Kalman','Physical','IMU')
+    legend([h1 h2 h3],{'Kalman','Physical','IMU'})
     hold off
 
    

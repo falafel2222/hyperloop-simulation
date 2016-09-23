@@ -5,7 +5,7 @@ classdef globalData
         %%% TIMING %%%
         timestep = .0001 %s
         kalmanTimestep = .001 %s
-        runtime = 3 %s
+        runtime = 1 %s
         numSteps
 
         %%% SIMULATION OPTIONS %%%
@@ -18,6 +18,7 @@ classdef globalData
         sensorFailure=true;
         failurePersist=true;
         failureRate=0.001;
+        dispKalmanRange=1;
             
         %%% TUBE SPECS %%%
         pusherForce = 17640 % newtons
@@ -31,23 +32,23 @@ classdef globalData
         airDensity
         
         %%% Covariances 'n stuff %%%
-        peTopCovConst = .0000000001*ones(3,1);
-        peLeftCovConst = .0000000001*ones(3,1);
-        peRightCovConst = .0000000001*ones(3,1);
+        peTopCovConst = .00001*ones(3,1);
+        peLeftCovConst = .00001*ones(3,1);
+        peRightCovConst = .00001*ones(3,1);
         pitotCovConst = .001
-        distDownCovConst = .00001*ones(6,1);
-        distDownRailCovConst = .00001*ones(5,1);
-        distSideCovConst = .0001*ones(5,1);
+        distDownCovConst = .0000001*ones(6,1);
+        distDownRailCovConst = .0000001*ones(5,1);
+        distSideCovConst = .000001*ones(5,1);
         IMUAccelCovConst = .00001*ones(3,1);
         IMUGyroCovConst = .000001*ones(3,1);
         
-        peTopCovLin = .0000000001*ones(3,1);
-        peLeftCovLin = .0000000001*ones(3,1);
-        peRightCovLin = .0000000001*ones(3,1);
+        peTopCovLin = .00001*ones(3,1);
+        peLeftCovLin = .00001*ones(3,1);
+        peRightCovLin = .00001*ones(3,1);
         pitotCovLin = .001
-        distDownCovLin = .0001*ones(6,1);
-        distDownRailCovLin = .0001*ones(5,1);
-        distSideCovLin = .00001*ones(5,1);
+        distDownCovLin = .000001*ones(6,1);
+        distDownRailCovLin = .000001*ones(5,1);
+        distSideCovLin = .000001*ones(5,1);
         IMUAccelCovLin = .00001*ones(3,1);
         IMUGyroCovLin = .000001*ones(3,1);
         

@@ -45,7 +45,7 @@ classdef podData
             pod.width = 1;
             pod.height = 1;
             pod.photoElectricTilt=13*pi/180; %rad
-            pod.angleOfPESensitivity = 80*pi/180; %rad
+            pod.angleOfPESensitivity = (40/2)*pi/180; %rad
             pod.peMax=1;
             pod.peFloor=0.1;
             pod.skateHeight=0.113919;
