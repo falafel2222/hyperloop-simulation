@@ -193,7 +193,7 @@ localAcc=(Rot*uk(1:3))-[0;0;globals.gravity;];
 
 
 Wk=diag(([localAcc'.^2 zeros(1,7)]*globals.kalmanTimestep^4)/36); %this needs to be improved
-
+procN=diag(Wk)'
 
 %this needs to be determined based on IMU error
 
@@ -223,7 +223,7 @@ Pkp1k=Fk*Pkk*Fk'+Bk*Qk*Bk'+Wk; %prediction step of the error, needs to be experi
 
 normQuat=sqrt(sum((xkp1k(7:10)).^2));
 xkp1k(7:10)=xkp1k(7:10)./normQuat;
-
+totalcov=diag(Pkp1k)'
 
 %%%%%%%%%%%%%%%%%%%----------------%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -277,6 +277,7 @@ if execution(1)==1 && numberUsed(1)~=0
     % h1kp1=(sz1+trackHeight)/Rot1(3,3); %normal to pod bottom
     x1kp1kp1=xkp1k+K1kp1*(z1kp1-h1kp1);
     P1kp1kp1=(eye(10,10)-K1kp1*H1kp1)*Pkp1k;
+    updcode=diag(P1kp1kp1)'
     
     normQuat1=sqrt(sum((x1kp1kp1(7:10)).^2));
     x1kp1kp1(7:10)=x1kp1kp1(7:10)./normQuat1;
@@ -368,7 +369,7 @@ if execution(3)==1 && numberUsed(3)~=0
     K3kp1=P2kp1kp1*H3kp1'/(H3kp1*P2kp1kp1*H3kp1'+S3kp1);
 
     
-    h3kp1=sy3'-(thicknessOfRail/2);%perpendicular to rail side
+    h3kp1=sy3'-(thicknessOfRail/2) %perpendicular to rail side
     % h3kp1=(sy3-(thicknessOfRail/2))/Rot3(2,2); %normal to pod side
         
     x3kp1kp1=x2kp1kp1+K3kp1*(z3kp1-h3kp1);

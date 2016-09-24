@@ -15,7 +15,7 @@ classdef globalData
         noiseModifierConst=0.005*ones(27,1);
         noiseModifierLin=0.002*ones(27,1);
         noiseModifierZero=[0*ones(26,1); -9.81];
-        sensorFailure=true;
+        sensorFailure=false;
         failurePersist=true;
         failureRate=0.001;
         dispKalmanRange=1;
@@ -38,7 +38,7 @@ classdef globalData
         pitotCovConst = .001
         distDownCovConst = .000001*ones(6,1);
         distDownRailCovConst = .000001*ones(5,1);
-        distSideCovConst = .0000001*ones(5,1);
+        distSideCovConst = .000001*ones(5,1);
         IMUAccelCovConst = .00001*ones(3,1);
         IMUGyroCovConst = .000001*ones(3,1);
         
@@ -48,7 +48,7 @@ classdef globalData
         pitotCovLin = .001
         distDownCovLin = .000001*ones(6,1);
         distDownRailCovLin = .000001*ones(5,1);
-        distSideCovLin = .000001*ones(5,1);
+        distSideCovLin = .00001*ones(5,1);
         IMUAccelCovLin = .00001*ones(3,1);
         IMUGyroCovLin = .000001*ones(3,1);
         

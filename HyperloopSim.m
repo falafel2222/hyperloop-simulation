@@ -97,10 +97,11 @@
     
     
     eBrakesActuated = false;    
-    
+    endSimul=false;
     disp('Simulation Initialized')
     %%%BEGIN LOOPING THROUGH TIMESTEPS%%%
     for n = 2:globals.numSteps
+        if ~endSimul
 %         if mod(n,1/(10*globals.timestep)) == 0
 %             disp('--------------------------')
 %             disp(n*globals.timestep)
@@ -300,8 +301,8 @@
 %                 act2=((rotMatrix(3,:)*pod.downRailDistancePositions(:,:))'+transPos(3,n))'
                 
                 execution(1) = 1;
-%                 execution(2) = 1;
                 sensorRecord(1:6,n/kalmanFreq)=distDownData;
+%                 execution(2) = 1;
 %                 sensorRecord(7:11,n/kalmanFreq)=distRailData;
             end
 %             if mod(n,kalmanFreq*100) == 0
@@ -310,10 +311,10 @@
 %             end
 %                 
             
-            if mod(n,kalmanFreq*5) == 0
-                execution(3) = 1;
-                sensorRecord(12:16,n/kalmanFreq)=distSideData;
-            end
+%             if mod(n,kalmanFreq*5) == 0
+%                 execution(3) = 1;
+%                 sensorRecord(12:16,n/kalmanFreq)=distSideData;
+%             end
 % %             if mod(n,kalmanFreq*20) == 14
 % %                 execution(4) = 1;
 % %             end
@@ -461,11 +462,11 @@
         end
         
         
-        %check collisions
-        endSimul=false;
-        for point = pod.collisionPoints;
+%         %check collisions
+%         endSimul=false;
+        for point = pod.collisionPoints
             realPoint = rotMatrix*point + transPos(:,n);
-            [distance, ~]=DistanceFinder(realPoint);
+            [distance, ~]=DistanceFinder(realPoint)
             if mod(n,kalmanFreq) == 0
                 kalmanPoint = rotMatrix*point + kalmanHistory(1:3,n/kalmanFreq);
                 [kalmanDistance, ~] = DistanceFinder(kalmanPoint);
@@ -486,7 +487,7 @@
            break 
         end
 
-                
+        end    
     end
     
     display(size(kalmanHistory(3,:)))
@@ -572,6 +573,7 @@
     legend([h1 h2 h3],{'Kalman','Physical','IMU'})
     hold off
     
+    
     figure;
     subplot(4,1,1)
     hold all
@@ -583,8 +585,8 @@
     title('q1')
     subplot(4,1,2)
     hold all
-%     IMUvReal=noisyKalmanVelIMU(3,1:end-1)-downsample(transVel(3,:),kalman
-%     Freq);
+%     imuvreal=noisykalmanvelimu(3,1:end-1)-downsample(transvel(3,:),kalman
+%     freq);
     plot(kalmanHistory(8,:),'b');
     plot(kalmanHistory(8,:)-sqrt(kalmanVarHistory(8,:)),'b:');
     plot(kalmanHistory(8,:)+sqrt(kalmanVarHistory(8,:)),'b:');
@@ -593,7 +595,7 @@
     title('q2')
     subplot(4,1,3)
     hold all
-%     IMUvReal=noisyKalmanVelIMU(3,1:end-1)-downsample(transVel(3,:),kalmanFreq);
+%     imuvreal=noisykalmanvelimu(3,1:end-1)-downsample(transvel(3,:),kalmanFreq);
 
   plot(kalmanHistory(9,:),'b');
     plot(kalmanHistory(9,:)-sqrt(kalmanVarHistory(9,:)),'b:');
@@ -610,12 +612,12 @@
     h3=plot(noisyKalmanQIMU(4,:),'r');
     title('q0')
     
-    legend([h1 h2 h3],{'Kalman','Physical','IMU'})
+    legend([h1 h2 h3],{'kalman','physical','imu'})
     hold off
 
-    KalmanRoll = atan2(2*(kalmanHistory(10,:).*kalmanHistory(7,:)+ kalmanHistory(8,:).*kalmanHistory(9,:)),1-2*(kalmanHistory(7,:).^2 + kalmanHistory(8,:).^2));
-            KalmanPitch = asin(2*(kalmanHistory(10,:).*kalmanHistory(8,:) - kalmanHistory(9,:).*kalmanHistory(7,:)));
-            KalmanYaw= atan2(2*(kalmanHistory(10,:).*kalmanHistory(9,:)+kalmanHistory(7,:).*kalmanHistory(8,:)),1-2*(kalmanHistory(8,:).^2 + kalmanHistory(9,:).^2));
+    kalmanRoll = atan2(2*(kalmanHistory(10,:).*kalmanHistory(7,:)+ kalmanHistory(8,:).*kalmanHistory(9,:)),1-2*(kalmanHistory(7,:).^2 + kalmanHistory(8,:).^2));
+            kalmanPitch = asin(2*(kalmanHistory(10,:).*kalmanHistory(8,:) - kalmanHistory(9,:).*kalmanHistory(7,:)));
+            kalmanYaw= atan2(2*(kalmanHistory(10,:).*kalmanHistory(9,:)+kalmanHistory(7,:).*kalmanHistory(8,:)),1-2*(kalmanHistory(8,:).^2 + kalmanHistory(9,:).^2));
     
             
             imuRoll = atan2(2*(noisyKalmanQIMU(4,:).*noisyKalmanQIMU(1,:)+ noisyKalmanQIMU(2,:).*noisyKalmanQIMU(3,:)),1-2*(noisyKalmanQIMU(1,:).^2 + noisyKalmanQIMU(2,:).^2));
@@ -627,24 +629,24 @@
 figure;
     subplot(3,1,3)
     hold all
-    plot(KalmanRoll,'b');
+    plot(kalmanRoll,'b');
     plot(downsample(rotPos(1,:),kalmanFreq),'g');
     plot(imuRoll,'r');
-    title('Roll')
+    title('roll')
     subplot(3,1,1)
     hold all
-    plot(KalmanPitch,'b')
+    plot(kalmanPitch,'b')
     plot(downsample(rotPos(2,:),kalmanFreq),'g');
     plot(imuPitch,'r');
-    title('Pitch')
+    title('pitch')
     subplot(3,1,2)
     hold all
-    h1=plot(KalmanYaw,'b');
+    h1=plot(kalmanYaw,'b');
     h2=plot(downsample(rotPos(3,:),kalmanFreq),'g');
     h3=plot(imuYaw,'r');
-    title('Yaw')
+    title('yaw')
     
-    legend([h1 h2 h3],{'Kalman','Physical','IMU'})
+    legend([h1 h2 h3],{'kalman','physical','imu'})
     hold off
    
 
