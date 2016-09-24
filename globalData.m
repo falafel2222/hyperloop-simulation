@@ -5,7 +5,7 @@ classdef globalData
         %%% TIMING %%%
         timestep = .0001 %s
         kalmanTimestep = .001 %s
-        runtime = 1 %s
+        runtime = 5%s
         numSteps
 
         %%% SIMULATION OPTIONS %%%
@@ -36,9 +36,9 @@ classdef globalData
         peLeftCovConst = .00001*ones(3,1);
         peRightCovConst = .00001*ones(3,1);
         pitotCovConst = .001
-        distDownCovConst = .0000001*ones(6,1);
-        distDownRailCovConst = .0000001*ones(5,1);
-        distSideCovConst = .000001*ones(5,1);
+        distDownCovConst = .000001*ones(6,1);
+        distDownRailCovConst = .000001*ones(5,1);
+        distSideCovConst = .0000001*ones(5,1);
         IMUAccelCovConst = .00001*ones(3,1);
         IMUGyroCovConst = .000001*ones(3,1);
         
@@ -58,7 +58,7 @@ classdef globalData
         pitotCovZero = 0
         distDownCovZero = 0.003*ones(6,1);
         distDownRailCovZero = 0.003*ones(5,1);
-        distSideCovZero = 0.01*ones(5,1);
+        distSideCovZero = 0.15*ones(5,1);
         IMUAccelCovZero = 0*ones(3,1);
         IMUGyroCovZero = 0*ones(3,1);
         
@@ -126,6 +126,7 @@ classdef globalData
             [globals.pitotMax; nan(5,1)] [globals.peTopMax; nan(3,1)] [globals.peLeftMax; nan(3,1)] [globals.peRightMax; nan(3,1)]];
             globals.sensorMins=[[globals.distDownMin] [globals.distDownRailMin; NaN] [globals.distSideMin; NaN]...
             [globals.pitotMin; nan(5,1)] [globals.peTopMin; nan(3,1)] [globals.peLeftMin; nan(3,1)] [globals.peRightMin; nan(3,1)]];
+          
         
         
         

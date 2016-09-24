@@ -16,41 +16,43 @@
     
     
     if globals.correctCovariance
-         globals.peTopSIMCovConst = globals.peTopSIMCovConst;
-         globals.peLeftSIMCovConst = globals.peLeftSIMCovConst;
-         globals.peRightSIMCovConst = globals.peRightSIMCovConst;
-         globals.pitotSIMCovConst = globals.pitotSIMCovConst;
-         globals.distDownSIMCovConst = globals.distDownSIMCovConst;
-         globals.distDownRailSIMCovConst = globals.distDownRailSIMCovConst;
-         globals.distSideSIMCovConst = globals.distSideSIMCovConst;
-         globals.IMUAccelSIMCovConst = globals.IMUAccelSIMCovConst;
-         globals.IMUGyroSIMCovConst = globals.IMUGyroSIMCovConst;
+         globals.peTopSIMCovConst = globals.peTopCovConst;
+         globals.peLeftSIMCovConst = globals.peLeftCovConst;
+         globals.peRightSIMCovConst = globals.peRightCovConst;
+         globals.pitotSIMCovConst = globals.pitotCovConst;
+         globals.distDownSIMCovConst = globals.distDownCovConst;
+         globals.distDownRailSIMCovConst = globals.distDownRailCovConst;
+         globals.distSideSIMCovConst = globals.distSideCovConst;
+         globals.IMUAccelSIMCovConst = globals.IMUAccelCovConst;
+         globals.IMUGyroSIMCovConst = globals.IMUGyroCovConst;
         
-         globals.peTopSIMCovLin = globals.peTopSIMCovLin;
-         globals.peLeftSIMCovLin = globals.peLeftSIMCovLin;
-         globals.peRightSIMCovLin = globals.peRightSIMCovLin;
-         globals.pitotSIMCovLin = globals.pitotSIMCovLin;
-         globals.distDownSIMCovLin = globals.distDownSIMCovLin;
-         globals.distDownRailSIMCovLin = globals.distDownRailSIMCovLin;
-         globals.distSideSIMCovLin = globals.distSideSIMCovLin;
-         globals.IMUAccelSIMCovLin = globals.IMUAccelSIMCovLin;
-         globals.IMUGyroSIMCovLin = globals.IMUGyroSIMCovLin;
+         globals.peTopSIMCovLin = globals.peTopCovLin;
+         globals.peLeftSIMCovLin = globals.peLeftCovLin;
+         globals.peRightSIMCovLin = globals.peRightCovLin;
+         globals.pitotSIMCovLin = globals.pitotCovLin;
+         globals.distDownSIMCovLin = globals.distDownCovLin;
+         globals.distDownRailSIMCovLin = globals.distDownRailCovLin;
+         globals.distSideSIMCovLin = globals.distSideCovLin;
+         globals.IMUAccelSIMCovLin = globals.IMUAccelCovLin;
+         globals.IMUGyroSIMCovLin = globals.IMUGyroCovLin;
                
-         globals.peTopSIMCovZero = globals.peTopSIMCovZero;
-         globals.peLeftSIMCovZero = globals.peLeftSIMCovZero;
-         globals.peRightSIMCovZero = globals.peRightSIMCovZero;
-         globals.pitotSIMCovZero = globals.pitotSIMCovZero;
-         globals.distDownSIMCovZero = globals.distDownSIMCovZero;
-         globals.distDownRailSIMCovZero = globals.distDownRailSIMCovZero;
-         globals.distSideSIMCovZero = globals.distSideSIMCovZero;
-         globals.IMUAccelSIMCovZero = globals.IMUAccelSIMCovZero;
-         globals.IMUGyroSIMCovZero = globals.IMUGyroSIMCovZero;
+         globals.peTopSIMCovZero = globals.peTopCovZero;
+         globals.peLeftSIMCovZero = globals.peLeftCovZero;
+         globals.peRightSIMCovZero = globals.peRightCovZero;
+         globals.pitotSIMCovZero = globals.pitotCovZero;
+         globals.distDownSIMCovZero = globals.distDownCovZero;
+         globals.distDownRailSIMCovZero = globals.distDownRailCovZero;
+         globals.distSideSIMCovZero = globals.distSideCovZero;
+         globals.IMUAccelSIMCovZero = globals.IMUAccelCovZero;
+         globals.IMUGyroSIMCovZero = globals.IMUGyroCovZero;
     end
     
     kalmanFreq = globals.kalmanTimestep/globals.timestep;
 
     % temporary vectors for debugging purposes
     rolls = zeros(1,globals.numSteps/kalmanFreq+1);
+    sensorInfo=zeros(25,globals.numSteps/kalmanFreq+1);
+    sensorRecord=zeros(25,globals.numSteps/kalmanFreq+1);
     scannerDistances = zeros(globals.numSteps/kalmanFreq+1);
     
     photoelectricCount=zeros(9,1);
@@ -249,22 +251,25 @@
             pitch = asin(2*(q0*q2 - q3*q1));
             rolls(n/kalmanFreq) = roll;
             % distance sensors
+            distDownData=nan(6,1);
+            distRailData=nan(5,1);
+            distSideData=nan(5,1);
             distance1Pos = transPos(:,n)*ones(1,6)+rotMatrix*pod.bottomDistancePositions;
             for i=1:6
-                [~, scanner1dist(i)] = DistanceFinder(distance1Pos(:,i)); 
+                [~, distDownData(i)] = DistanceFinder(distance1Pos(:,i)); 
             end
 
             distance2Pos = transPos(:,n)*ones(1,5)+rotMatrix*pod.downRailDistancePositions;
             for i=1:5
-                [scanner2dist(i)] = TrackDistanceFinder(distance2Pos(:,i)); 
+                [distRailData(i)] = TrackDistanceFinder(distance2Pos(:,i)); 
             end
 
             distance3Pos = transPos(:,n)*ones(1,5)+rotMatrix*pod.sideDistancePositions;
             for i=1:5
-                [~, scanner3dist(i)] = InsideDistance(distance3Pos(:,i)); 
+                [~, distSideData(i)] = InsideDistance(distance3Pos(:,i)); 
             end
             
-            pitotRead=0.5*globals.airDensity*(dot(transVel(:,n),rotMatrix*pod.pitotDirection))^2;
+%             pitotRead=0.5*globals.airDensity*(dot(transVel(:,n),rotMatrix*pod.pitotDirection))^2;
             photoelectricData=nan(6,3);
             for i=1:3
                 photoelectricData(i,1) = photoelectricReadingTop(pod.topPhotoElectricPositions(:,i), state, tube.stripDistances(photoelectricCount(i)+1), pod.peToWall(i), tube,pod);
@@ -280,26 +285,42 @@
             
             [photoelectricCount,photoelectricUse,lastPE,prevPE,crossIn]=photoelectric(photoelectricCount,photoelectricData,lastPE,prevPE,crossIn,n*globals.timestep,pod);
             
-            sensorData = [[scanner1dist']...
-                [scanner2dist'; NaN;]...
-                [scanner3dist'; NaN;]...
-                [pitotRead;nan(5,1)]...
+            sensorData = [[distDownData]...
+                [distRailData; NaN;]...
+                [distSideData; NaN;]...
+                [nan(6,1)]...%[pitotRead;nan(5,1)]...
                 photoelectricData];
+            sensorInfo(:,n/kalmanFreq)=[distDownData;distRailData;distSideData;photoelectricData(1:3,1);photoelectricData(1:3,2);photoelectricData(1:3,3);];
             execution =  [0 0 0 0 0 0 0];
 
-            if mod(n,kalmanFreq*20) == 0
+            if mod(n,kalmanFreq*5) == 0
+%                 dat1=distDownData'
+%                 act1=((rotMatrix(3,:)*pod.bottomDistancePositions(:,:))'+transPos(3,n)+tube.railHeight)
+%                 dat2=distRailData'
+%                 act2=((rotMatrix(3,:)*pod.downRailDistancePositions(:,:))'+transPos(3,n))'
+                
                 execution(1) = 1;
-                execution(2) = 1;
+%                 execution(2) = 1;
+                sensorRecord(1:6,n/kalmanFreq)=distDownData;
+%                 sensorRecord(7:11,n/kalmanFreq)=distRailData;
             end
+%             if mod(n,kalmanFreq*100) == 0
+%                 cTime=n/10000
+%                 cX=transPos(1,n)
+%             end
+%                 
             
-            if mod(n,kalmanFreq*20) == 7
+            if mod(n,kalmanFreq*5) == 0
                 execution(3) = 1;
+                sensorRecord(12:16,n/kalmanFreq)=distSideData;
             end
-            if mod(n,kalmanFreq*20) == 14
-                execution(4) = 1;
-            end
+% %             if mod(n,kalmanFreq*20) == 14
+% %                 execution(4) = 1;
+% %             end
             
-            execution(5:7)=photoelectricUse;
+%             execution(5:7)=photoelectricUse;
+%             sensorRecord(17:25,n/kalmanFreq)=[photoelectricData(1:3,1);ph
+%             otoelectricData(1:3,2);photoelectricData(1:3,3);];
             
             IMUData = [transAcc(:,n)' rotVel(:,n)']';
 %             disp('imu')
@@ -315,15 +336,39 @@
             
             noisyGyroData(:,n/kalmanFreq)=IMUData(4:6);
 %           
+%             if mod(n,kalmanFreq*5) == 0
+%                 dat1=distDownData'
+%                 act1=((rotMatrix(3,:)*pod.bottomDistancePositions(:,:))'+transPos(3,n)+tube.railHeight)'
+%                 dat2=distRailData'
+%                 act2=((rotMatrix(3,:)*pod.downRailDistancePositions(:,:))'+transPos(3,n))'
+%             end
             if globals.randomSensorNoise
-                sensorData = sensorData + [sqrt(globals.distDownSIMCovConst+globals.distDownSIMCovLin.*abs(scanner1dist'-globals.distDownSIMCovZero)).*randn(6,1)...
-                    [sqrt(globals.distDownRailSIMCovConst+globals.distDownRailSIMCovLin.*abs(scanner2dist'-globals.distDownRailSIMCovZero));NaN].*randn(6,1)...
-                    [sqrt(globals.distSideSIMCovConst+globals.distSideSIMCovLin.*abs(scanner3dist'-globals.distSideSIMCovZero));NaN].*randn(6,1)...
-                    [sqrt(globals.pitotSIMCovConst+globals.pitotSIMCovLin.*abs(pitotRead-globals.pitotSIMCovZero)); nan(5,1)].*randn(6,1)...
+                sensorData = sensorData + [sqrt(globals.distDownSIMCovConst+globals.distDownSIMCovLin.*abs(distDownData-globals.distDownSIMCovZero)).*randn(6,1)...
+                    [sqrt(globals.distDownRailSIMCovConst+globals.distDownRailSIMCovLin.*abs(distRailData-globals.distDownRailSIMCovZero));NaN].*randn(6,1)...
+                    [sqrt(globals.distSideSIMCovConst+globals.distSideSIMCovLin.*abs(distSideData-globals.distSideSIMCovZero));NaN].*randn(6,1)...
+                    [ nan(6,1)].*randn(6,1)...%[sqrt(globals.pitotSIMCovConst+globals.pitotSIMCovLin.*abs(pitotRead-globals.pitotSIMCovZero)); nan(5,1)].*randn(6,1)...
                     [sqrt(globals.peTopSIMCovConst+globals.peTopSIMCovLin.*abs(photoelectricData(1:3,1)-globals.peTopSIMCovZero)); nan(3,1)]...
                     [sqrt(globals.peLeftSIMCovConst+globals.peLeftSIMCovLin.*abs(photoelectricData(1:3,2)-globals.peLeftSIMCovZero)); nan(3,1)]...
                     [sqrt(globals.peRightSIMCovConst+globals.peRightSIMCovLin.*abs(photoelectricData(1:3,3)-globals.peRightSIMCovZero)); nan(3,1)]];
             end
+%              if mod(n,kalmanFreq*5) == 0
+%                 dat1=distDownData';
+%                 noiseDat1=sensorData(:,1)';
+%                 act1=((rotMatrix(3,:)*pod.bottomDistancePositions(:,:))'+transPos(3,n)+tube.railHeight)'
+%                   noiseDiff1=act1-noiseDat1
+%                   mean(noiseDiff1)
+% %                   diff1=act1-dat1
+% %                   mean(diff1)
+%                 dat2=distRailData';
+%                 noiseDat2=sensorData(1:5,2)';
+%                 act2=((rotMatrix(3,:)*pod.downRailDistancePositions(:,:))'+transPos(3,n))'
+%                   noiseDiff2=act2-noiseDat2
+%                   mean(noiseDiff2)
+% %                   diff2=act2-dat2
+% %                   mean(diff2)
+% %  
+%             end
+            
             
 %             if (n/kalmanFreq > 1)
             IMUData = IMUData + [rotMatrix\[0; 0; globals.gravity]; 0;0 ;0;];
@@ -361,22 +406,25 @@
 %                 disp(noisyKalmanVelIMU(:,n/kalmanFreq));
 %                 %disp('pos');
 %                 disp(noisyKalmanPosIMU(:,n/kalmanFreq));                
-%                 scannerDistances(n/kalmanFreq) = scanner1dist;
-%             disp(scanner1dist);
+%                 scannerDistances(n/kalmanFreq) = distDownData;
+%             disp(distDownData);
             if globals.sensorFailure
                 if rand(1)<globals.failureRate
                     failed=true;
-                    sensorType(end+1)=ceil(7*rand(1));
-                    sensorList=sensorData(:,sensorType(end));
-                    sensorNum(end+1)=ceil(rand(1)*length(find(~isnan(sensorList))));
-                    if rand(1)>0.5
-                        sensorFailState(end+1)=1;
-                        sensorData(sensorNum(end),sensorType(end))=globals.sensorMaxs(sensorNum(end),sensorType(end));
-                        fprintf('*****Sensor %d of type %d has failed at %d milliseconds, reading high.********\n',sensorNum(end),sensorType(end),n*globals.timestep*1000)
-                    else
-                        sensorFailState(end+1)=0;
-                        sensorData(sensorNum(end),sensorType(end))=globals.sensorMins(sensorNum(end),sensorType(end));
-                        fprintf('*****Sensor %d of type %d has failed at %d milliseconds, reading low.********\n',sensorNum(end),sensorType(end),n*globals.timestep*1000)
+                    st=ceil(7*rand(1));
+                    sensorList=sensorData(:,st);
+                    if length(sensorList(~isnan(sensorList)))>0
+                        sensorType(end+1)=st;
+                        sensorNum(end+1)=ceil(rand(1)*length(find(~isnan(sensorList))));
+                        if rand(1)>0.5
+                            sensorFailState(end+1)=1;
+                            sensorData(sensorNum(end),sensorType(end))=globals.sensorMaxs(sensorNum(end),sensorType(end));
+                            fprintf('*****Sensor %d of type %d has failed at %d milliseconds, reading high.********\n',sensorNum(end),sensorType(end),n*globals.timestep*1000)
+                        else
+                            sensorFailState(end+1)=0;
+                            sensorData(sensorNum(end),sensorType(end))=globals.sensorMins(sensorNum(end),sensorType(end));
+                            fprintf('*****Sensor %d of type %d has failed at %d milliseconds, reading low.********\n',sensorNum(end),sensorType(end),n*globals.timestep*1000)
+                        end
                     end
                 end
                 if globals.failurePersist && failed
@@ -393,7 +441,7 @@
             end
 
             [sensorUse,numberUsed] = sensorFailureDetection(sensorData,globals,pod,tube);
-            
+           
             [state, covariance,~] = KalmanFilterHyperloop(state, covariance, IMUData, sensorData, execution, sensorUse,numberUsed, n/kalmanFreq,photoelectricCount,globals,pod,tube);
 %              if mod(n,kalmanFreq*5) == 0
 %                 distance1Pos
@@ -463,6 +511,10 @@
     h3=plot(noisyKalmanPosIMU(2,:),'r');
     legend([h1 h2 h3],{'Kalman','Physical','IMU'})
     title('Y-position')
+    for i=12:16
+        plot(sensorInfo(i,:),'k:')
+%         plot(sensorRecord(i,:),'k-')
+    end
     hold off
     subplot(3,1,3)
     hold all
@@ -472,8 +524,19 @@
     h2=plot(downsample(transPos(3,:),kalmanFreq),'g');
     h3=plot(noisyKalmanPosIMU(3,:),'r');
     legend([h1 h2 h3],{'Kalman','Physical','IMU'})
+    for i=1:6
+        plot(sensorInfo(i,:),'k:')
+%         plot(sensorRecord(i,:),'k-')
+    end
+    for i=7:11
+        plot(sensorInfo(i,:),'c:')
+%         plot(sensorRecord(i,:),'c-')
+    end
     title('Z-position')
     hold off
+    
+    
+    
     figure;
     subplot(3,1,3)
     hold all
@@ -484,6 +547,7 @@
     plot(downsample(transVel(3,:),kalmanFreq),'g');
     plot(noisyKalmanVelIMU(3,:),'r');
     title('Z-velocity')
+    
     subplot(3,1,1)
     hold all
 %     IMUvReal=noisyKalmanVelIMU(3,1:end-1)-downsample(transVel(3,:),kalman
@@ -549,6 +613,39 @@
     legend([h1 h2 h3],{'Kalman','Physical','IMU'})
     hold off
 
+    KalmanRoll = atan2(2*(kalmanHistory(10,:).*kalmanHistory(7,:)+ kalmanHistory(8,:).*kalmanHistory(9,:)),1-2*(kalmanHistory(7,:).^2 + kalmanHistory(8,:).^2));
+            KalmanPitch = asin(2*(kalmanHistory(10,:).*kalmanHistory(8,:) - kalmanHistory(9,:).*kalmanHistory(7,:)));
+            KalmanYaw= atan2(2*(kalmanHistory(10,:).*kalmanHistory(9,:)+kalmanHistory(7,:).*kalmanHistory(8,:)),1-2*(kalmanHistory(8,:).^2 + kalmanHistory(9,:).^2));
+    
+            
+            imuRoll = atan2(2*(noisyKalmanQIMU(4,:).*noisyKalmanQIMU(1,:)+ noisyKalmanQIMU(2,:).*noisyKalmanQIMU(3,:)),1-2*(noisyKalmanQIMU(1,:).^2 + noisyKalmanQIMU(2,:).^2));
+            imuPitch = asin(2*(noisyKalmanQIMU(4,:).*noisyKalmanQIMU(2,:) - noisyKalmanQIMU(3,:).*noisyKalmanQIMU(1,:)));
+            imuYaw= atan2(2*(noisyKalmanQIMU(4,:).*noisyKalmanQIMU(3,:)+noisyKalmanQIMU(1,:).*noisyKalmanQIMU(2,:)),1-2*(noisyKalmanQIMU(2,:).^2 + noisyKalmanQIMU(3,:).^2));
+    
+           
+            
+figure;
+    subplot(3,1,3)
+    hold all
+    plot(KalmanRoll,'b');
+    plot(downsample(rotPos(1,:),kalmanFreq),'g');
+    plot(imuRoll,'r');
+    title('Roll')
+    subplot(3,1,1)
+    hold all
+    plot(KalmanPitch,'b')
+    plot(downsample(rotPos(2,:),kalmanFreq),'g');
+    plot(imuPitch,'r');
+    title('Pitch')
+    subplot(3,1,2)
+    hold all
+    h1=plot(KalmanYaw,'b');
+    h2=plot(downsample(rotPos(3,:),kalmanFreq),'g');
+    h3=plot(imuYaw,'r');
+    title('Yaw')
+    
+    legend([h1 h2 h3],{'Kalman','Physical','IMU'})
+    hold off
    
 
 

@@ -258,7 +258,7 @@ if execution(1)==1 && numberUsed(1)~=0
     dd1dq3=[2*q11 2*q12 0]*p1;
     dd1dq0=[-2*q12 2*q11 0]*p1;
     
-    H1kp1=[zeros(numberUsed(1),1) zeros(numberUsed(1),1) ones(numberUsed(1),1) zeros(numberUsed(1),1) zeros(numberUsed(1),1) zeros(numberUsed(1),1) dd1dq1' dd1dq2' dd1dq3' dd1dq0'];%perpendicular to track
+    H1kp1=[zeros(numberUsed(1),1) zeros(numberUsed(1),1) ones(numberUsed(1),1) zeros(numberUsed(1),1) zeros(numberUsed(1),1) zeros(numberUsed(1),1) dd1dq1' dd1dq2' dd1dq3' dd1dq0'];  %perpendicular to track
 %     H1kp1=[0 0 ones(6,1)/Rot1(3,3) 0 0 0
 %     (Rot1(3,3)*dd1dq1'-((sz1+trackHeight)*-4*q11))/((Rot1(3,3))^2) (Rot1(3,3)*dd1dq2'-((sz1+trackHeight)*-4*q12))/((Rot1(3,3))^2) (Rot1(3,3)*dd1dq3'-((sz1+trackHeight)*0)/((Rot1(3,3))^2) (Rot1(3,3)*dd1dq0'-((sz1+trackHeight)*0))/((Rot1(3,3))^2)]; %normal to pod bottom
 
@@ -270,10 +270,10 @@ if execution(1)==1 && numberUsed(1)~=0
 %     disp(H1kp1);
 %     disp(H1kp1*Pkp1k*H1kp1');
 %     disp(H1kp1*Pkp1k*H1kp1'+S1kp1);
-    K1kp1=Pkp1k*H1kp1'/(H1kp1*Pkp1k*H1kp1'+S1kp1)
-
+    K1kp1=Pkp1k*H1kp1'/(H1kp1*Pkp1k*H1kp1'+S1kp1);
 
     h1kp1=sz1'-trackHeight; %perpendicular to track
+%     h1kp1d=h1kp1'
     % h1kp1=(sz1+trackHeight)/Rot1(3,3); %normal to pod bottom
     x1kp1kp1=xkp1k+K1kp1*(z1kp1-h1kp1);
     P1kp1kp1=(eye(10,10)-K1kp1*H1kp1)*Pkp1k;
@@ -316,10 +316,10 @@ if execution(2)==1 && numberUsed(2)~=0
 %     (Rot2(3,3)*dd2dq1'-((sz2+railTopHeight)*-4*q21))/((Rot2(3,3))^2) (Rot2(3,3)*dd2dq2'-((sz2+railTopHeight)*-4*q22))/((Rot2(3,3))^2) (Rot2(3,3)*dd2dq3'-((sz2+railTopHeight)*0)/((Rot2(3,3))^2) (Rot2(3,3)*dd2dq0'-((sz2+railTopHeight)*0))/((Rot2(3,3))^2)]; %normal to pod bottom
 
     S2kp1=diag((globals.distDownRailCovConst(distDownRailUse)+globals.distDownRailCovLin(distDownRailUse).*abs(z2kp1-globals.distDownRailCovZero(distDownRailUse)))); %Experimentally determined
-    K2kp1=P1kp1kp1*H2kp1'/(H2kp1*P1kp1kp1*H2kp1'+S2kp1)
-
+    K2kp1=P1kp1kp1*H2kp1'/(H2kp1*P1kp1kp1*H2kp1'+S2kp1);
     
     h2kp1=sz2'-railTopHeight; %perpendicular to track
+%     h2kp1d=h2kp1'
     % h2kp1=(sz2+railTopHeight)/Rot2(3,3); %normal to pod bottom
       
     x2kp1kp1=x1kp1kp1+K2kp1*(z2kp1-h2kp1);
@@ -365,7 +365,7 @@ if execution(3)==1 && numberUsed(3)~=0
 %     H3kp1=[0 0 ones(5,1)/Rot3(2,2) 0 0 0 (Rot3(2,2)*dd3dq1'-((sy3-(thicknessOfRail/2))*-4*q31))/((Rot3(2,2))^2) (Rot3(2,2)*dd3dq2'-((sy3-(thicknessOfRail/2))*0))/((Rot3(2,2))^2) (Rot3(2,2)*dd3dq3'-((sy3-(thicknessOfRail/2))*-4*q33))/((Rot3(2,2))^2) (Rot3(2,2)*dd3dq0'-((sy3-(thicknessOfRail/2))*0))/((Rot3(2,2))^2)]; %normal to pod side
 
     S3kp1=diag(globals.distSideCovConst(distSideUse)+globals.distSideCovLin(distSideUse).*abs(z3kp1-globals.distSideCovZero(distSideUse))); %Experimentally determined
-    K3kp1=P2kp1kp1*H3kp1'/(H3kp1*P2kp1kp1*H3kp1'+S3kp1)
+    K3kp1=P2kp1kp1*H3kp1'/(H3kp1*P2kp1kp1*H3kp1'+S3kp1);
 
     
     h3kp1=sy3'-(thicknessOfRail/2);%perpendicular to rail side
@@ -428,7 +428,7 @@ if execution(4)==1 && numberUsed(4)~=0
     
     H4kp1=[0 0 0 ddP4dvx ddP4dvy ddP4dvz ddP4dq1 ddP4dq2 ddP4dq3 ddP4dq0];
     S4kp1=diag(globals.pitotCovConst+globals.pitotCovLin.*abs(z4kp1-globals.pitotCovZero)); %Experimentally determined
-    K4kp1=P3kp1kp1*H4kp1'/(H4kp1*P3kp1kp1*H4kp1'+S4kp1)
+    K4kp1=P3kp1kp1*H4kp1'/(H4kp1*P3kp1kp1*H4kp1'+S4kp1);
 
     
     h4kp1=0.5*globals.airDensity*(dot(vPod4,b4))^2;
