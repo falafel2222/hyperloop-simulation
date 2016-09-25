@@ -192,8 +192,8 @@ OmegaMatrix=[0 omegaZ -omegaY omegaX;...
 localAcc=(Rot*uk(1:3))-[0;0;globals.gravity;];
 
 
-Wk=diag(([localAcc'.^2 zeros(1,7)]*globals.kalmanTimestep^4)/36); %this needs to be improved
-procN=diag(Wk)'
+Wk=diag([((localAcc'.^2)*globals.kalmanTimestep^4)/36 0.00000001*ones(1,3) 0.00000000001*ones(1,4)]); %this needs to be improved
+procN=diag(Wk)';
 
 %this needs to be determined based on IMU error
 
@@ -218,11 +218,14 @@ xkp1k=xkk+globals.kalmanTimestep*[  (xkk(4:6)+globals.kalmanTimestep*0.5*localAc
                        localAcc;...
                        (1/2).*(OmegaMatrix*xkk(7:10))];  %prediction step of the state 
 
+
 Pkp1k=Fk*Pkk*Fk'+Bk*Qk*Bk'+Wk; %prediction step of the error, needs to be experimentally determined 
+Pkp1kd=diag(Pkp1k)';
 
 
 normQuat=sqrt(sum((xkp1k(7:10)).^2));
 xkp1k(7:10)=xkp1k(7:10)./normQuat;
+xkp1kd=xkp1k'
 totalcov=diag(Pkp1k)'
 
 %%%%%%%%%%%%%%%%%%%----------------%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -241,6 +244,7 @@ if execution(1)==1 && numberUsed(1)~=0
     distDownUse=sensorUse(1:numberUsed(1),1);
     
     z1kp1 = sensorData((distDownUse),1);
+    z1kp1d=z1kp1'
     p1=pod.bottomDistancePositions(:,distDownUse);
     rz1=xkp1k(3);
     q11=xkp1k(7);  
@@ -258,26 +262,34 @@ if execution(1)==1 && numberUsed(1)~=0
     dd1dq3=[2*q11 2*q12 0]*p1;
     dd1dq0=[-2*q12 2*q11 0]*p1;
     
-    H1kp1=[zeros(numberUsed(1),1) zeros(numberUsed(1),1) ones(numberUsed(1),1) zeros(numberUsed(1),1) zeros(numberUsed(1),1) zeros(numberUsed(1),1) dd1dq1' dd1dq2' dd1dq3' dd1dq0'];  %perpendicular to track
-%     H1kp1=[0 0 ones(6,1)/Rot1(3,3) 0 0 0
+    H1kp1=[zeros(numberUsed(1),1) zeros(numberUsed(1),1) ones(numberUsed(1),1) zeros(numberUsed(1),1) zeros(numberUsed(1),1) zeros(numberUsed(1),1) dd1dq1' dd1dq2' dd1dq3' dd1dq0']    %perpendicular to trac
+
+    %     H1kp1=[0 0 ones(6,1)/Rot1(3,3) 0 0 0
 %     (Rot1(3,3)*dd1dq1'-((sz1+trackHeight)*-4*q11))/((Rot1(3,3))^2) (Rot1(3,3)*dd1dq2'-((sz1+trackHeight)*-4*q12))/((Rot1(3,3))^2) (Rot1(3,3)*dd1dq3'-((sz1+trackHeight)*0)/((Rot1(3,3))^2) (Rot1(3,3)*dd1dq0'-((sz1+trackHeight)*0))/((Rot1(3,3))^2)]; %normal to pod bottom
 
 %     S1kp1=diag([0.01,1000]);%XZScannerCovariance; %Experimentally determined
 %     laserFactor = 100;
     S1kp1 = diag(globals.distDownCovConst(distDownUse)+globals.distDownCovLin(distDownUse).*abs(z1kp1-globals.distDownCovZero(distDownUse)));
+    S1kp11=diag(S1kp1)';
 %     disp('--------------------------------------')
 %     disp(Pkp1k);
 %     disp(H1kp1);
 %     disp(H1kp1*Pkp1k*H1kp1');
 %     disp(H1kp1*Pkp1k*H1kp1'+S1kp1);
-    K1kp1=Pkp1k*H1kp1'/(H1kp1*Pkp1k*H1kp1'+S1kp1);
+    K1kp1=Pkp1k*H1kp1'/(H1kp1*Pkp1k*H1kp1'+S1kp1)
 
     h1kp1=sz1'-trackHeight; %perpendicular to track
+    h1kp1d=h1kp1';
 %     h1kp1d=h1kp1'
     % h1kp1=(sz1+trackHeight)/Rot1(3,3); %normal to pod bottom
+    diff1=(z1kp1-h1kp1)';
+    add1=(K1kp1*(z1kp1-h1kp1))';
     x1kp1kp1=xkp1k+K1kp1*(z1kp1-h1kp1);
-    P1kp1kp1=(eye(10,10)-K1kp1*H1kp1)*Pkp1k;
-    updcode=diag(P1kp1kp1)'
+    x1kp1kp1d=x1kp1kp1';
+    P1kp1kp1=(eye(10,10)-K1kp1*H1kp1)*Pkp1k*(eye(10,10)-K1kp1*H1kp1)'+K1kp1*S1kp1*K1kp1';
+    oldC1=diag(Pkp1k)';
+    diffC1=-diag(K1kp1*H1kp1*Pkp1k)';
+    updcov1=diag(P1kp1kp1)'
     
     normQuat1=sqrt(sum((x1kp1kp1(7:10)).^2));
     x1kp1kp1(7:10)=x1kp1kp1(7:10)./normQuat1;
@@ -324,7 +336,8 @@ if execution(2)==1 && numberUsed(2)~=0
     % h2kp1=(sz2+railTopHeight)/Rot2(3,3); %normal to pod bottom
       
     x2kp1kp1=x1kp1kp1+K2kp1*(z2kp1-h2kp1);
-    P2kp1kp1=(eye(10,10)-K2kp1*H2kp1)*P1kp1kp1;
+    P2kp1kp1=(eye(10,10)-K2kp1*H2kp1)*P1kp1kp1*(eye(10,10)-K2kp1*H2kp1)'+K2kp1*S2kp1*K2kp1';
+    updcov2=diag(P2kp1kp1)';
     
     normQuat2=sqrt(sum((x2kp1kp1(7:10)).^2));
     x2kp1kp1(7:10)=x2kp1kp1(7:10)./normQuat2;
@@ -369,11 +382,12 @@ if execution(3)==1 && numberUsed(3)~=0
     K3kp1=P2kp1kp1*H3kp1'/(H3kp1*P2kp1kp1*H3kp1'+S3kp1);
 
     
-    h3kp1=sy3'-(thicknessOfRail/2) %perpendicular to rail side
+    h3kp1=sy3'-(thicknessOfRail/2); %perpendicular to rail side
     % h3kp1=(sy3-(thicknessOfRail/2))/Rot3(2,2); %normal to pod side
         
     x3kp1kp1=x2kp1kp1+K3kp1*(z3kp1-h3kp1);
-    P3kp1kp1=(eye(10,10)-K3kp1*H3kp1)*P2kp1kp1;
+    P3kp1kp1=(eye(10,10)-K3kp1*H3kp1)*P2kp1kp1*(eye(10,10)-K3kp1*H3kp1)'+K3kp1*S3kp1*K3kp1';
+    updcov3=diag(P3kp1kp1)'
     
     normQuat3=sqrt(sum((x3kp1kp1(7:10)).^2));
     x3kp1kp1(7:10)=x3kp1kp1(7:10)./normQuat3;

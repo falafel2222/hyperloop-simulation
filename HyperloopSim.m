@@ -97,11 +97,11 @@
     
     
     eBrakesActuated = false;    
-    endSimul=false;
+    endSimul=[0];
     disp('Simulation Initialized')
     %%%BEGIN LOOPING THROUGH TIMESTEPS%%%
     for n = 2:globals.numSteps
-        if ~endSimul
+        if sum(endSimul)<10
 %         if mod(n,1/(10*globals.timestep)) == 0
 %             disp('--------------------------')
 %             disp(n*globals.timestep)
@@ -149,7 +149,32 @@
                     localPoints(:,forceIndex) = localPusherPoint;
                 end
                     forceIndex = forceIndex + 1;
+                
+                
+                %%%%% DAMPING FORCE %%%%%
+                localDampForce=[0,0,-transVel(3,n-1)*0.0001];
+                localDampPoint=[0;0;0];
 
+                localForces(:,forceIndex) = localDampForce;
+                localPoints(:,forceIndex) = localDampPoint;
+                forceIndex = forceIndex + 1;
+               
+                    
+                %%%%% LAT CONTROL %%%%%
+                localLCFrontForce=-0.05*(dot((rotMatrix*[0.8*pod.length/2;0;0]+transVel(:,n-1)),[0;1;0]))*(abs(dot((rotMatrix*[0.8*pod.length/2;0;0]+transVel(:,n-1)),[0;1;0]))>0.05);
+                localLCFrontPoint=[0.8*pod.length/2;0;0];
+
+                localForces(:,forceIndex) = localLCFrontForce;
+                localPoints(:,forceIndex) = localLCFrontPoint;
+                forceIndex = forceIndex + 1;
+                
+                localLCBackForce=-0.05*(dot((rotMatrix*[-0.8*pod.length/2;0;0]+transVel(:,n-1)),[0;1;0]))*(abs(dot((rotMatrix*[-0.8*pod.length/2;0;0]+transVel(:,n-1)),[0;1;0]))>0.05);
+                localLCBackPoint=[-0.8*pod.length/2;0;0];
+
+                localForces(:,forceIndex) = localLCBackForce;
+                localPoints(:,forceIndex) = localLCBackPoint;
+                forceIndex = forceIndex + 1;
+               
 
                 %%%%% DRAG FORCE %%%%%
                 drag = pod.dragCoef*globals.airDensity*pod.height*pod.width/2*(transVel(1,n-1))^2;
@@ -294,7 +319,7 @@
             sensorInfo(:,n/kalmanFreq)=[distDownData;distRailData;distSideData;photoelectricData(1:3,1);photoelectricData(1:3,2);photoelectricData(1:3,3);];
             execution =  [0 0 0 0 0 0 0];
 
-            if mod(n,kalmanFreq*5) == 0
+%             if mod(n,kalmanFreq*3) == 2
 %                 dat1=distDownData'
 %                 act1=((rotMatrix(3,:)*pod.bottomDistancePositions(:,:))'+transPos(3,n)+tube.railHeight)
 %                 dat2=distRailData'
@@ -302,18 +327,20 @@
                 
                 execution(1) = 1;
                 sensorRecord(1:6,n/kalmanFreq)=distDownData;
-%                 execution(2) = 1;
-%                 sensorRecord(7:11,n/kalmanFreq)=distRailData;
-            end
+%             end
+%             if mod(n,kalmanFreq*3)==1
+                execution(2) = 1;
+                sensorRecord(7:11,n/kalmanFreq)=distRailData;
+%             end
 %             if mod(n,kalmanFreq*100) == 0
 %                 cTime=n/10000
 %                 cX=transPos(1,n)
 %             end
 %                 
             
-%             if mod(n,kalmanFreq*5) == 0
-%                 execution(3) = 1;
-%                 sensorRecord(12:16,n/kalmanFreq)=distSideData;
+%             if mod(n,kalmanFreq*3) == 0
+                execution(3) = 1;
+                sensorRecord(12:16,n/kalmanFreq)=distSideData;
 %             end
 % %             if mod(n,kalmanFreq*20) == 14
 % %                 execution(4) = 1;
@@ -464,14 +491,28 @@
         
 %         %check collisions
 %         endSimul=false;
-        for point = pod.collisionPoints
+       for point = pod.collisionPoints
             realPoint = rotMatrix*point + transPos(:,n);
-            [distance, ~]=DistanceFinder(realPoint)
+            [distance, ~]= DistanceFinder(realPoint);
             if mod(n,kalmanFreq) == 0
-                kalmanPoint = rotMatrix*point + kalmanHistory(1:3,n/kalmanFreq);
+                q0=kalmanHistory(10, n/kalmanFreq);
+                q1=kalmanHistory(7, n/kalmanFreq);
+                q2=kalmanHistory(8, n/kalmanFreq);
+                q3=kalmanHistory(9, n/kalmanFreq);
+                kalmanRotMatrix=[1-2*q2^2-2*q3^2 2*(q1*q2-q0*q3) 2*(q1*q3+q0*q2);...
+                           2*(q1*q2+q0*q3) 1-2*q1^2-2*q3^2 2*(q2*q3-q0*q1);...
+                           2*(q1*q3-q0*q2) 2*(q2*q3+q0*q1) 1-2*q1^2-2*q2^2];
+                kalmanPoint = kalmanRotMatrix*point + kalmanHistory(1:3,n/kalmanFreq);
                 [kalmanDistance, ~] = DistanceFinder(kalmanPoint);
                 if kalmanDistance <= 0
-%                    disp(n); 
+                   disp('simulation Ended due to Kalman thinking we crashed');
+                   disp(point);
+                   disp(realPoint);
+                   disp(kalmanPoint);
+                   disp(distance);
+                   disp(kalmanDistance);
+%                    endSimul(end+1)=1;
+                   break;
                 end
             end
 
@@ -479,15 +520,16 @@
                 norm(point)
                 disp('Collision Occurred at timestep');
                 disp(n);
-                endSimul=true;
+%                 endSimul(end+1)=1;
+                   disp(point);
+                   disp(realPoint);
+                   disp(kalmanPoint);
+                   disp(distance);
+                   disp(kalmanDistance);
                 break
             end
         end
-        if endSimul
-           break 
         end
-
-        end    
     end
     
     display(size(kalmanHistory(3,:)))

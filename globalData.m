@@ -4,17 +4,17 @@ classdef globalData
         
         %%% TIMING %%%
         timestep = .0001 %s
-        kalmanTimestep = .001 %s
-        runtime = 5%s
+        kalmanTimestep = .01 %s
+        runtime = 20%s
         numSteps
 
         %%% SIMULATION OPTIONS %%%
         randomForceNoise=true;
         randomIMUNoise=true;
         randomSensorNoise=true;
-        noiseModifierConst=0.005*ones(27,1);
-        noiseModifierLin=0.002*ones(27,1);
-        noiseModifierZero=[0*ones(26,1); -9.81];
+        noiseModifierConst=0.005*ones(30,1);
+        noiseModifierLin=0.002*ones(30,1);
+        noiseModifierZero=[0*ones(29,1); -9.81];
         sensorFailure=false;
         failurePersist=true;
         failureRate=0.001;
